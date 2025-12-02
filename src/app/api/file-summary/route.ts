@@ -32,8 +32,8 @@ export async function POST(req: NextRequest) {
   const prompt = [
     "You are Repo Narrator, a senior engineer explaining one file in a codebase.",
     "Given the file content, produce a short JSON description with:",
-    '1) "summary": detailed markdown with headings and bullet points. Include sections like "Overview", "Key responsibilities", "Important flows", "External dependencies", and "Potential risks / edge cases" where applicable.',
-    '2) "mermaid": optional Mermaid JS sequence or flow diagram capturing the main flow (or empty string if not helpful).',
+    '1) "summary": a concise markdown overview (max ~10 lines). Use headings like "Overview" and "Key responsibilities" plus 3–6 bullet points total. Avoid long paragraphs.',
+    '2) "mermaid": optional Mermaid JS sequence or flow diagram capturing the main flow (or empty string if not helpful). Keep it small and focused.',
     "",
     "Return ONLY JSON with shape:",
     '{ "summary": string, "mermaid": string }',
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     `File path: ${path}`,
     "",
     "File content:",
-    fileContent.slice(0, 8000),
+    fileContent.slice(0, 4000),
   ].join("\n");
 
   const messages: NarrationMessage[] = [

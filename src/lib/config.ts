@@ -1,0 +1,21 @@
+export const config = {
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY,
+    model: process.env.GEMINI_MODEL ?? "gemini-1.5-pro",
+  },
+  github: {
+    clientId: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    // Never log personal access tokens; only store encrypted references.
+  },
+  database: {
+    url: process.env.DATABASE_URL,
+  },
+  vectorStore: {
+    url: process.env.VECTOR_DB_URL,
+    apiKey: process.env.VECTOR_DB_KEY,
+    provider: process.env.VECTOR_DB_PROVIDER,
+  },
+};
+
+
