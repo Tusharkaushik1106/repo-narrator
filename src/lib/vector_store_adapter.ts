@@ -40,7 +40,7 @@ type StoredVector = {
   metadata?: Record<string, unknown>;
 };
 
-// Simple in-memory store for this dev prototype. Not persistent.
+
 const memoryStore = new Map<string, StoredVector[]>();
 
 function cosineSimilarity(a: number[], b: number[]): number {

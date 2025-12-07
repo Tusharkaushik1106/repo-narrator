@@ -62,7 +62,7 @@ export const geminiAdapter: LLMAdapter = {
         };
         return finalMessage;
       } catch (error: unknown) {
-        // Check if it's a rate limit error by checking status or message
+        
         const isRateLimit = 
           (error && typeof error === "object" && "status" in error && error.status === 429) ||
           (error instanceof Error && (
@@ -112,7 +112,7 @@ export const geminiAdapter: LLMAdapter = {
 
       return finalMessage;
     } catch (error: unknown) {
-      // Check if it's a rate limit error by checking status or message
+      
       const isRateLimit = 
         (error && typeof error === "object" && "status" in error && error.status === 429) ||
         (error instanceof Error && (

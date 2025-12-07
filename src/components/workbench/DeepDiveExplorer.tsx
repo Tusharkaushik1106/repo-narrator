@@ -56,7 +56,7 @@ function buildFileTree(
   const tree: FileTreeItem[] = [];
   const pathMap = new Map<string, FileTreeItem>();
 
-  // Sort entries: folders first, then files, both alphabetically
+  
   const sortedEntries = [...entries].sort((a, b) => {
     const aIsFolder = a.type === "folder";
     const bIsFolder = b.type === "folder";
@@ -70,19 +70,19 @@ function buildFileTree(
     const itemName = parts.pop()!;
     const isFolder = entry.type === "folder";
 
-    // For files, detect routes and importance
+    
     let isRoute = false;
     let isImportant = false;
 
     if (!isFolder) {
-      // Detect routes: API routes, Next.js app router pages, or route files
+      
       isRoute =
         entry.path.includes("/route.") ||
         entry.path.includes("/api/") ||
         (entry.path.includes("/app/") && (itemName === "page.tsx" || itemName === "page.ts" || itemName === "page.jsx" || itemName === "page.js")) ||
         entry.path.includes("/pages/") ||
         !!itemName.match(/^route\.(ts|tsx|js|jsx)$/);
-      // Important files: high complexity, or common important files
+      
       isImportant =
         entry.complexity === "red" ||
         entry.complexity === "yellow" ||
@@ -96,7 +96,7 @@ function buildFileTree(
         itemName === ".env.example";
     }
 
-    // Build folder structure
+    
     let currentPath = "";
     let currentLevel = tree;
 
@@ -115,16 +115,16 @@ function buildFileTree(
         currentLevel.push(folder);
         currentLevel = folder.children!;
       } else {
-        // Folder already exists, just navigate to its children
+        
         const folder = pathMap.get(currentPath)!;
         currentLevel = folder.children!;
       }
     }
 
-    // Add the item (folder or file)
+    
     if (isFolder) {
-      // Check if folder already exists (might have been created as parent)
-      // Use pathMap to check if we've already added this folder
+      
+      
       if (!pathMap.has(entry.path)) {
         const folder: FileTreeItem = {
           name: itemName,
@@ -136,7 +136,7 @@ function buildFileTree(
         currentLevel.push(folder);
       }
     } else {
-      // For files, check if we already have this file (shouldn't happen, but be safe)
+      
       const existingFile = currentLevel.find(
         (item) => item.path === entry.path && item.type === "file",
       );
@@ -265,12 +265,12 @@ FileTreeItem.displayName = "FileTreeItem";
 export function DeepDiveExplorer() {
   const { analysis } = useRepoContext();
 
-  // Use fullFileTree if available, otherwise fall back to sampleFileTree
+  
   const fileTree = useMemo(() => {
     if (analysis?.fullFileTree && analysis.fullFileTree.length > 0) {
       return analysis.fullFileTree;
     }
-    // Convert sampleFileTree format to match fullFileTree format
+    
     return (analysis?.sampleFileTree ?? []).map((file) => ({
       path: file.path,
       type: "file" as const,
@@ -286,11 +286,11 @@ export function DeepDiveExplorer() {
 
   const treeStructure = useMemo(() => buildFileTree(fileTree), [fileTree]);
 
-  // Auto-expand folders containing the selected file
+  
   useEffect(() => {
     if (!selectedPath) return;
     const parts = selectedPath.split("/");
-    parts.pop(); // Remove filename
+    parts.pop(); 
     const pathsToExpand = new Set<string>();
     let currentPath = "";
     for (const part of parts) {
@@ -331,18 +331,18 @@ export function DeepDiveExplorer() {
   const [error, setError] = useState<string | null>(null);
   const [fullScreen, setFullScreen] = useState(false);
 
-  // Clear cache when API key might have changed (check localStorage for API key change)
+  
   const [cache, setCache] = useState<
     Record<string, { code: string; summary: string; mermaid: string | null }>
   >({});
   
-  // Clear cache on mount if needed (you can trigger this manually)
+  
   useEffect(() => {
-    // Check if we should clear cache (e.g., if API key was changed)
+    
     const lastApiKeyChange = localStorage.getItem("lastApiKeyChange");
     const cacheVersion = localStorage.getItem("cacheVersion") || "0";
     if (lastApiKeyChange && Date.now() - parseInt(lastApiKeyChange) < 60000) {
-      // API key was changed in the last minute, clear cache
+      
       setCache({});
       localStorage.removeItem("lastApiKeyChange");
     }
@@ -354,13 +354,13 @@ export function DeepDiveExplorer() {
   useEffect(() => {
     if (!analysis || !selectedPath || !owner || !name) return;
 
-    // Check cache first (but skip if there's an error for this file)
+    
     const cached = cache[selectedPath];
     if (cached && !error) {
       setEditorValue(cached.code);
       setSummary(cached.summary);
       setMermaid(cached.mermaid);
-      setError(null); // Clear any previous errors
+      setError(null); 
       return;
     }
 
@@ -382,7 +382,7 @@ export function DeepDiveExplorer() {
         });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          // Handle rate limit errors specifically
+          
           if (res.status === 429) {
             const retryAfter = data.retryAfter || 60;
             throw new Error(
@@ -409,7 +409,7 @@ export function DeepDiveExplorer() {
           }
           return newCache;
         });
-        setError(null); // Clear any previous errors on success
+        setError(null); 
       } catch (err: unknown) {
         if (controller.signal.aborted) return;
         const message =
@@ -425,7 +425,7 @@ export function DeepDiveExplorer() {
     load();
 
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [owner, name, selectedPath]);
 
   return (
@@ -523,7 +523,7 @@ export function DeepDiveExplorer() {
                         <button
                           onClick={() => {
                             setError(null);
-                            // Force reload by clearing cache for this file
+                            
                             setCache((prev) => {
                               const newCache = { ...prev };
                               if (selectedPath) {
@@ -531,7 +531,7 @@ export function DeepDiveExplorer() {
                               }
                               return newCache;
                             });
-                            // Force a re-render by updating selectedPath slightly
+                            
                             const currentPath = selectedPath;
                             setSelectedPath(null);
                             setTimeout(() => setSelectedPath(currentPath), 10);

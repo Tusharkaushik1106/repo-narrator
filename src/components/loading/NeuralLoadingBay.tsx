@@ -35,7 +35,7 @@ export function NeuralLoadingBay() {
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          // Handle rate limit errors specifically
+          
           if (res.status === 429) {
             const retryAfter = data.retryAfter || 60;
             throw new Error(
@@ -72,7 +72,7 @@ export function NeuralLoadingBay() {
     };
   }, [analysis?.repoUrl, failAnalysis, finishAnalysis, router, status]);
 
-  // Show error state
+  
   if (status === "error" && error) {
     return (
       <main className="flex min-h-dvh items-center justify-center px-4 py-10 sm:px-8 lg:px-16">

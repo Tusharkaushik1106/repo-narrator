@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     const repo = (await repoRes.json()) as GitHubRepo;
 
-    // Try to fetch README as additional context.
+    
     const readmeRes = await fetch(
       `https://raw.githubusercontent.com/${owner}/${name}/HEAD/README.md`,
       { headers: { "User-Agent": "repo-narrator" } },
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    // Check for rate limit errors - check both message and error object status
+    
     const isRateLimit = 
       (error && typeof error === "object" && "status" in error && error.status === 429) ||
       errorMessage.includes("rate limit") || 
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
       return Response.json(
         {
           error: errorMessage,
-          retryAfter: 60, // seconds
+          retryAfter: 60, 
         },
         { status: 429 },
       );
@@ -186,7 +186,7 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    // --- Lightweight indexing for public repos ---
+    
     const tree = await fetchRepoTree(owner, name);
 
     const codeEntries = tree.filter(
@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
           firstFileContent = text;
         }
       } catch {
-        // ignore individual file failures
+        
       }
     }
 
@@ -253,10 +253,10 @@ export async function POST(req: NextRequest) {
           maxSize > 0 ? Math.round(40 + (60 * size) / maxSize) : 50,
       }));
 
-    // Build complete file tree with all folders and files
+    
     const allEntries = tree.map((entry) => {
       if (entry.type === "tree") {
-        // It's a folder
+        
         return {
           path: entry.path,
           type: "folder" as const,
@@ -264,7 +264,7 @@ export async function POST(req: NextRequest) {
           complexity: "green" as const,
         };
       } else {
-        // It's a file
+        
         const ext = entry.path.split(".").pop() ?? "";
         const language =
           ext === "tsx" || ext === "jsx"
@@ -290,7 +290,7 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // For backward compatibility, also include the sample file tree (first 10 code files)
+    
     const sampleFileTree = limited.slice(0, 10).map((entry) => {
       const ext = entry.path.split(".").pop() ?? "";
       const language =
@@ -332,11 +332,11 @@ export async function POST(req: NextRequest) {
       stackRadar: parsedJson?.stackRadar ?? [],
       hotspots,
       sampleFileTree,
-      fullFileTree: allEntries, // Include all folders and files
+      fullFileTree: allEntries, 
       sampleCode,
     });
   } catch (error: unknown) {
-    // Catch any unhandled errors
+    
     const errorMessage = error instanceof Error ? error.message : String(error);
     const isRateLimit = 
       (error && typeof error === "object" && "status" in error && error.status === 429) ||

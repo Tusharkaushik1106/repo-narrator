@@ -6,7 +6,7 @@ export const config = {
   github: {
     clientId: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    // Never log personal access tokens; only store encrypted references.
+    
   },
   database: {
     url: process.env.DATABASE_URL,

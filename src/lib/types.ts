@@ -5,9 +5,9 @@ export interface RepoIdentifier {
   github?: {
     url: string;
     branch?: string;
-    personalAccessTokenId?: string; // reference to a stored token, not the token itself
+    personalAccessTokenId?: string; 
   };
-  uploadId?: string; // id for uploaded zip or local bundle
+  uploadId?: string; 
 }
 
 export interface IndexingProgressStep {
@@ -22,7 +22,7 @@ export interface IndexingMetrics {
   indexedFiles?: number;
   totalLines?: number;
   componentsFound?: number;
-  languages?: Record<string, number>; // language -> file count
+  languages?: Record<string, number>; 
   hotspots?: Array<{
     path: string;
     complexity: number;
@@ -36,7 +36,7 @@ export interface RepoSummary {
   elevatorPitch?: string;
   architectureOverview?: string;
   techStack?: {
-    [key: string]: number; // used for radar chart values
+    [key: string]: number; 
   };
 }
 

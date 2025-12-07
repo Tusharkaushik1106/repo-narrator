@@ -8,13 +8,13 @@ function getEmbeddingClient() {
     throw new Error("GEMINI_API_KEY is not configured");
   }
   const client = new GoogleGenerativeAI(apiKey);
-  // @ts-expect-error typings for embedding model are compatible with generative
+  
   return client.getGenerativeModel({ model: EMBEDDING_MODEL });
 }
 
 export async function embedText(text: string): Promise<number[]> {
   const model = getEmbeddingClient();
-  // @ts-expect-error embedContent is available on embedding models
+  
   const result = await model.embedContent(text);
   const values = result.embedding?.values;
   if (!values || !Array.isArray(values)) {

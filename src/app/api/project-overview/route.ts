@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch README if available
+    
     let readmeContent = "";
     try {
       const readmeRes = await fetch(
@@ -28,19 +28,19 @@ export async function POST(request: NextRequest) {
       if (readmeRes.ok) {
         const readmeData = await readmeRes.json();
         const content = Buffer.from(readmeData.content, "base64").toString("utf-8");
-        readmeContent = content.slice(0, 2000); // Limit README size
+        readmeContent = content.slice(0, 2000); 
       }
     } catch {
-      // README fetch failed, continue without it
+      
     }
 
-    // Build file tree summary
+    
     const fileTreeSummary = fileTree
       ?.slice(0, 30)
       .map((f: { path: string; language: string }) => `${f.path} (${f.language})`)
       .join("\n") || "";
 
-    // Build comprehensive prompt
+    
     const prompt = [
       "You are Repo Narrator, analyzing an entire codebase to provide a comprehensive project overview.",
       "",
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       "Repository information:",
       `- Owner: ${owner}`,
       `- Name: ${name}`,
-      `- URL: ${repoUrl || `https://github.com/${owner}/${name}`}`,
+      `- URL: ${repoUrl || `https:
       "",
       "Sample code files:",
       sampleCode ? sampleCode.slice(0, 3000) : "No sample code available",
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse JSON response
+    
     let parsed: {
       overview: string;
       architecture: string;
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
       const jsonSlice = completion.content.slice(start, end + 1);
       parsed = JSON.parse(jsonSlice);
     } catch {
-      // Fallback if parsing fails
+      
       parsed = {
         overview: "Unable to parse comprehensive analysis. This repository contains code files that work together to form a functional application.",
         architecture: "The project follows a structured architecture with organized components and modules.",

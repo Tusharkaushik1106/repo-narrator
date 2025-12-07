@@ -103,7 +103,7 @@ export function ProjectOverview() {
   return (
     <div className="h-full overflow-y-auto px-4 py-6">
       <div className="mx-auto max-w-5xl space-y-6">
-        {/* Overview Section */}
+        
         <motion.section
           className="glass-panel overflow-hidden p-6"
           initial={{ opacity: 0, y: 20 }}
@@ -117,7 +117,7 @@ export function ProjectOverview() {
           </div>
         </motion.section>
 
-        {/* Architecture Diagram */}
+        
         {projectAnalysis.mermaidArchitecture && (
           <motion.section
             className="glass-panel overflow-hidden p-6"
@@ -138,7 +138,7 @@ export function ProjectOverview() {
           </motion.section>
         )}
 
-        {/* Key Components */}
+        
         {projectAnalysis.keyComponents && projectAnalysis.keyComponents.length > 0 && (
           <motion.section
             className="glass-panel overflow-hidden p-6"
@@ -165,7 +165,7 @@ export function ProjectOverview() {
           </motion.section>
         )}
 
-        {/* Data Flow Diagram */}
+        
         {projectAnalysis.mermaidDataFlow && (
           <motion.section
             className="glass-panel overflow-hidden p-6"
@@ -190,7 +190,7 @@ export function ProjectOverview() {
           </motion.section>
         )}
 
-        {/* Tech Stack */}
+        
         {projectAnalysis.techStack && projectAnalysis.techStack.length > 0 && (
           <motion.section
             className="glass-panel overflow-hidden p-6"
@@ -214,7 +214,7 @@ export function ProjectOverview() {
           </motion.section>
         )}
 
-        {/* Dependencies */}
+        
         {projectAnalysis.dependencies && projectAnalysis.dependencies.length > 0 && (
           <motion.section
             className="glass-panel overflow-hidden p-6"

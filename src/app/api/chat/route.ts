@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       let userMessage = "\n\n[Repo Narrator] Sorry, something went wrong while talking to Gemini.";
       
-      // Check for rate limit errors
+      
       if (errorMessage.includes("429") || errorMessage.includes("quota") || errorMessage.includes("rate limit")) {
         userMessage = 
           "\n\n[Repo Narrator] ⚠️ Rate limit exceeded. " +

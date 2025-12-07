@@ -32,7 +32,7 @@ export function CockpitDashboard() {
 
   return (
     <main className="flex h-screen flex-col overflow-hidden">
-      {/* Tab Navigation */}
+      
       <div className="border-b border-slate-800/80 bg-slate-950/90 px-4 sm:px-8 lg:px-10">
         <div className="mx-auto flex max-w-6xl gap-1">
           <button
@@ -58,7 +58,7 @@ export function CockpitDashboard() {
         </div>
       </div>
 
-      {/* Tab Content */}
+      
       <div className="flex-1 overflow-hidden">
         {activeTab === "overview" ? (
           <div className="h-full overflow-y-auto px-4 py-6 sm:px-8 lg:px-10">

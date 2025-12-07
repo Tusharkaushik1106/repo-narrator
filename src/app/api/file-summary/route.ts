@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      // Check for rate limit errors
+      
       const isRateLimit = 
         (error && typeof error === "object" && "status" in error && error.status === 429) ||
         errorMessage.includes("rate limit") || 
@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
       mermaid: parsed.mermaid,
     });
   } catch (error: unknown) {
-    // Catch any unhandled errors
+    
     const errorMessage = error instanceof Error ? error.message : String(error);
     const isRateLimit = 
       (error && typeof error === "object" && "status" in error && error.status === 429) ||
