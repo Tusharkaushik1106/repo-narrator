@@ -51,44 +51,86 @@ export const geminiAdapter: LLMAdapter = {
     const streaming = config?.streaming ?? true;
 
     if (!streaming || !onChunk) {
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
+      try {
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+        const finalMessage: NarrationMessage = {
+          id: randomUUID(),
+          role: "assistant",
+          content: text,
+          createdAt: new Date().toISOString(),
+        };
+        return finalMessage;
+      } catch (error: unknown) {
+        // Check if it's a rate limit error by checking status or message
+        const isRateLimit = 
+          (error && typeof error === "object" && "status" in error && error.status === 429) ||
+          (error instanceof Error && (
+            error.message.includes("429") || 
+            error.message.includes("quota") || 
+            error.message.includes("rate limit") ||
+            error.message.includes("Too Many Requests")
+          ));
+        
+        if (isRateLimit) {
+          throw new Error(
+            "Gemini API rate limit exceeded. The free tier allows 20 requests per day. " +
+            "Please wait ~60 seconds and try again, or upgrade your API plan. " +
+            "See https://ai.google.dev/gemini-api/docs/rate-limits for more info."
+          );
+        }
+        throw error;
+      }
+    }
+
+    try {
+      const streamingResult = await model.generateContentStream(prompt);
+
+      let fullText = "";
+
+      for await (const chunk of streamingResult.stream) {
+        const chunkText = chunk.text();
+        fullText += chunkText;
+        const responseChunk: LLMResponseChunk = {
+          text: chunkText,
+          done: false,
+        };
+        onChunk(responseChunk);
+      }
+
+      onChunk({
+        text: "",
+        done: true,
+      });
+
       const finalMessage: NarrationMessage = {
         id: randomUUID(),
         role: "assistant",
-        content: text,
+        content: fullText,
         createdAt: new Date().toISOString(),
       };
+
       return finalMessage;
+    } catch (error: unknown) {
+      // Check if it's a rate limit error by checking status or message
+      const isRateLimit = 
+        (error && typeof error === "object" && "status" in error && error.status === 429) ||
+        (error instanceof Error && (
+          error.message.includes("429") || 
+          error.message.includes("quota") || 
+          error.message.includes("rate limit") ||
+          error.message.includes("Too Many Requests")
+        ));
+      
+      if (isRateLimit) {
+        throw new Error(
+          "Gemini API rate limit exceeded. The free tier allows 20 requests per day. " +
+          "Please wait ~60 seconds and try again, or upgrade your API plan. " +
+          "See https://ai.google.dev/gemini-api/docs/rate-limits for more info."
+        );
+      }
+      throw error;
     }
-
-    const streamingResult = await model.generateContentStream(prompt);
-
-    let fullText = "";
-
-    for await (const chunk of streamingResult.stream) {
-      const chunkText = chunk.text();
-      fullText += chunkText;
-      const responseChunk: LLMResponseChunk = {
-        text: chunkText,
-        done: false,
-      };
-      onChunk(responseChunk);
-    }
-
-    onChunk({
-      text: "",
-      done: true,
-    });
-
-    const finalMessage: NarrationMessage = {
-      id: randomUUID(),
-      role: "assistant",
-      content: fullText,
-      createdAt: new Date().toISOString(),
-    };
-
-    return finalMessage;
   },
 };
 

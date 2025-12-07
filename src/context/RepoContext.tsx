@@ -21,6 +21,12 @@ export interface RepoAnalysis {
   stackRadar: StackRadarPoint[];
   hotspots: HotspotEntry[];
   sampleFileTree: { path: string; language: string; complexity: "green" | "yellow" | "red" }[];
+  fullFileTree?: Array<{
+    path: string;
+    type: "file" | "folder";
+    language: string;
+    complexity: "green" | "yellow" | "red";
+  }>;
   sampleCode: string;
 }
 
@@ -65,6 +71,7 @@ export function RepoProvider({ children }: { children: ReactNode }) {
               stackRadar: [],
               hotspots: [],
               sampleFileTree: [],
+              fullFileTree: [],
               sampleCode: "",
             },
       );

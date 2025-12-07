@@ -6,9 +6,10 @@ import "reactflow/dist/style.css";
 import Editor from "@monaco-editor/react";
 import { motion } from "framer-motion";
 import { useRepoContext } from "@/context/RepoContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback, memo } from "react";
 import { MermaidDiagram } from "@/components/diagrams/MermaidDiagram";
 import ReactMarkdown from "react-markdown";
+import { ChevronRight, ChevronDown, Folder, File, Route, Zap } from "lucide-react";
 
 const initialNodes = [
   {
@@ -33,13 +34,291 @@ const initialEdges = [
   { id: "e1-3", source: "1", target: "3", animated: true },
 ];
 
+interface FileTreeItem {
+  name: string;
+  path: string;
+  type: "file" | "folder";
+  children?: FileTreeItem[];
+  complexity?: "green" | "yellow" | "red";
+  language?: string;
+  isRoute?: boolean;
+  isImportant?: boolean;
+}
+
+function buildFileTree(
+  entries: Array<{
+    path: string;
+    type?: "file" | "folder";
+    language: string;
+    complexity: "green" | "yellow" | "red";
+  }>,
+): FileTreeItem[] {
+  const tree: FileTreeItem[] = [];
+  const pathMap = new Map<string, FileTreeItem>();
+
+  // Sort entries: folders first, then files, both alphabetically
+  const sortedEntries = [...entries].sort((a, b) => {
+    const aIsFolder = a.type === "folder";
+    const bIsFolder = b.type === "folder";
+    if (aIsFolder && !bIsFolder) return -1;
+    if (!aIsFolder && bIsFolder) return 1;
+    return a.path.localeCompare(b.path);
+  });
+
+  for (const entry of sortedEntries) {
+    const parts = entry.path.split("/");
+    const itemName = parts.pop()!;
+    const isFolder = entry.type === "folder";
+
+    // For files, detect routes and importance
+    let isRoute = false;
+    let isImportant = false;
+
+    if (!isFolder) {
+      // Detect routes: API routes, Next.js app router pages, or route files
+      isRoute =
+        entry.path.includes("/route.") ||
+        entry.path.includes("/api/") ||
+        (entry.path.includes("/app/") && (itemName === "page.tsx" || itemName === "page.ts" || itemName === "page.jsx" || itemName === "page.js")) ||
+        entry.path.includes("/pages/") ||
+        !!itemName.match(/^route\.(ts|tsx|js|jsx)$/);
+      // Important files: high complexity, or common important files
+      isImportant =
+        entry.complexity === "red" ||
+        entry.complexity === "yellow" ||
+        itemName === "package.json" ||
+        itemName === "tsconfig.json" ||
+        itemName === "next.config.js" ||
+        itemName === "next.config.ts" ||
+        itemName === "tailwind.config.js" ||
+        itemName === "tailwind.config.ts" ||
+        itemName === "README.md" ||
+        itemName === ".env.example";
+    }
+
+    // Build folder structure
+    let currentPath = "";
+    let currentLevel = tree;
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      currentPath = currentPath ? `${currentPath}/${part}` : part;
+
+      if (!pathMap.has(currentPath)) {
+        const folder: FileTreeItem = {
+          name: part,
+          path: currentPath,
+          type: "folder",
+          children: [],
+        };
+        pathMap.set(currentPath, folder);
+        currentLevel.push(folder);
+        currentLevel = folder.children!;
+      } else {
+        // Folder already exists, just navigate to its children
+        const folder = pathMap.get(currentPath)!;
+        currentLevel = folder.children!;
+      }
+    }
+
+    // Add the item (folder or file)
+    if (isFolder) {
+      // Check if folder already exists (might have been created as parent)
+      // Use pathMap to check if we've already added this folder
+      if (!pathMap.has(entry.path)) {
+        const folder: FileTreeItem = {
+          name: itemName,
+          path: entry.path,
+          type: "folder",
+          children: [],
+        };
+        pathMap.set(entry.path, folder);
+        currentLevel.push(folder);
+      }
+    } else {
+      // For files, check if we already have this file (shouldn't happen, but be safe)
+      const existingFile = currentLevel.find(
+        (item) => item.path === entry.path && item.type === "file",
+      );
+      if (!existingFile) {
+        currentLevel.push({
+          name: itemName,
+          path: entry.path,
+          type: "file",
+          complexity: entry.complexity,
+          language: entry.language,
+          isRoute,
+          isImportant,
+        });
+      }
+    }
+  }
+
+  return tree;
+}
+
+const FileTreeItem = memo(
+  ({
+    item,
+    level = 0,
+    selectedPath,
+    expandedFolders,
+    onToggleFolder,
+    onSelectFile,
+  }: {
+    item: FileTreeItem;
+    level?: number;
+    selectedPath: string | null;
+    expandedFolders: Set<string>;
+    onToggleFolder: (path: string) => void;
+    onSelectFile: (path: string) => void;
+  }) => {
+    const isExpanded = expandedFolders.has(item.path);
+    const isFolder = item.type === "folder";
+
+    const dotColor =
+      item.complexity === "red"
+        ? "#fb7185"
+        : item.complexity === "yellow"
+          ? "#fbbf24"
+          : "#22c55e";
+
+    if (isFolder) {
+      return (
+        <>
+          <li
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1 cursor-pointer hover:bg-slate-900/60 transition-colors"
+            style={{ paddingLeft: `${0.5 + level * 0.75}rem` }}
+            onClick={() => onToggleFolder(item.path)}
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-3 w-3 text-slate-400 flex-shrink-0" />
+            ) : (
+              <ChevronRight className="h-3 w-3 text-slate-400 flex-shrink-0" />
+            )}
+            <Folder className="h-3.5 w-3.5 text-cyan-400/70 flex-shrink-0" />
+            <span className="truncate font-mono text-[11px] text-slate-300">{item.name}</span>
+          </li>
+          {isExpanded &&
+            item.children?.map((child, index) => (
+              <FileTreeItem
+                key={`${child.path}-${child.type}-${index}`}
+                item={child}
+                level={level + 1}
+                selectedPath={selectedPath}
+                expandedFolders={expandedFolders}
+                onToggleFolder={onToggleFolder}
+                onSelectFile={onSelectFile}
+              />
+            ))}
+        </>
+      );
+    }
+
+    const fileIsSelected = selectedPath === item.path;
+
+    return (
+      <li
+        className={`flex items-center gap-1.5 rounded-lg px-2 py-1 cursor-pointer transition-colors ${
+          fileIsSelected
+            ? "bg-cyan-500/20 border-l-2 border-cyan-400"
+            : "hover:bg-slate-900/60"
+        }`}
+        style={{ paddingLeft: `${0.5 + level * 0.75}rem` }}
+        onClick={() => onSelectFile(item.path)}
+      >
+        <div className="h-3.5 w-3.5 flex-shrink-0 flex items-center justify-center">
+          {item.isRoute ? (
+            <Route className="h-3 w-3 text-purple-400" />
+          ) : (
+            <File className="h-3 w-3 text-slate-400" />
+          )}
+        </div>
+        <span
+          className={`truncate font-mono text-[11px] flex-1 ${
+            fileIsSelected ? "text-cyan-200 font-medium" : "text-slate-200"
+          }`}
+        >
+          {item.name}
+        </span>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {item.isImportant && (
+            <Zap className="h-2.5 w-2.5 text-amber-400" fill="currentColor" />
+          )}
+          {item.complexity && (
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{
+                background: dotColor,
+                boxShadow: `${dotColor}80 0 0 4px`,
+              }}
+            />
+          )}
+        </div>
+      </li>
+    );
+  },
+);
+
+FileTreeItem.displayName = "FileTreeItem";
+
 export function DeepDiveExplorer() {
   const { analysis } = useRepoContext();
 
-  const fileTree = analysis?.sampleFileTree ?? [];
+  // Use fullFileTree if available, otherwise fall back to sampleFileTree
+  const fileTree = useMemo(() => {
+    if (analysis?.fullFileTree && analysis.fullFileTree.length > 0) {
+      return analysis.fullFileTree;
+    }
+    // Convert sampleFileTree format to match fullFileTree format
+    return (analysis?.sampleFileTree ?? []).map((file) => ({
+      path: file.path,
+      type: "file" as const,
+      language: file.language,
+      complexity: file.complexity,
+    }));
+  }, [analysis?.fullFileTree, analysis?.sampleFileTree]);
+
   const [selectedPath, setSelectedPath] = useState<string | null>(
-    fileTree[0]?.path ?? null,
+    fileTree.find((f) => f.type === "file")?.path ?? null,
   );
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+
+  const treeStructure = useMemo(() => buildFileTree(fileTree), [fileTree]);
+
+  // Auto-expand folders containing the selected file
+  useEffect(() => {
+    if (!selectedPath) return;
+    const parts = selectedPath.split("/");
+    parts.pop(); // Remove filename
+    const pathsToExpand = new Set<string>();
+    let currentPath = "";
+    for (const part of parts) {
+      currentPath = currentPath ? `${currentPath}/${part}` : part;
+      pathsToExpand.add(currentPath);
+    }
+    setExpandedFolders((prev) => {
+      const next = new Set(prev);
+      pathsToExpand.forEach((path) => next.add(path));
+      return next;
+    });
+  }, [selectedPath]);
+
+  const handleFileSelect = useCallback((path: string) => {
+    setSelectedPath(path);
+  }, []);
+
+  const handleToggleFolder = useCallback((path: string) => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  }, []);
   const [editorValue, setEditorValue] = useState(
     analysis?.sampleCode ||
       `// Deep Dive Explorer\n// Paste a GitHub URL on the home screen to see real repo context here.\n`,
@@ -52,18 +331,36 @@ export function DeepDiveExplorer() {
   const [error, setError] = useState<string | null>(null);
   const [fullScreen, setFullScreen] = useState(false);
 
+  // Clear cache when API key might have changed (check localStorage for API key change)
   const [cache, setCache] = useState<
     Record<string, { code: string; summary: string; mermaid: string | null }>
   >({});
+  
+  // Clear cache on mount if needed (you can trigger this manually)
+  useEffect(() => {
+    // Check if we should clear cache (e.g., if API key was changed)
+    const lastApiKeyChange = localStorage.getItem("lastApiKeyChange");
+    const cacheVersion = localStorage.getItem("cacheVersion") || "0";
+    if (lastApiKeyChange && Date.now() - parseInt(lastApiKeyChange) < 60000) {
+      // API key was changed in the last minute, clear cache
+      setCache({});
+      localStorage.removeItem("lastApiKeyChange");
+    }
+  }, []);
+
+  const owner = analysis?.owner ?? "";
+  const name = analysis?.name ?? "";
 
   useEffect(() => {
-    if (!analysis || !selectedPath) return;
+    if (!analysis || !selectedPath || !owner || !name) return;
 
+    // Check cache first (but skip if there's an error for this file)
     const cached = cache[selectedPath];
-    if (cached) {
+    if (cached && !error) {
       setEditorValue(cached.code);
       setSummary(cached.summary);
       setMermaid(cached.mermaid);
+      setError(null); // Clear any previous errors
       return;
     }
 
@@ -77,14 +374,23 @@ export function DeepDiveExplorer() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            owner: analysis.owner,
-            name: analysis.name,
+            owner,
+            name,
             path: selectedPath,
           }),
           signal: controller.signal,
         });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
+          // Handle rate limit errors specifically
+          if (res.status === 429) {
+            const retryAfter = data.retryAfter || 60;
+            throw new Error(
+              `Rate limit exceeded. The Gemini API free tier allows 20 requests per day. ` +
+              `Please wait ${retryAfter} seconds and try again, or upgrade your API plan. ` +
+              `Visit https://ai.google.dev/gemini-api/docs/rate-limits for more information.`
+            );
+          }
           throw new Error(data.error || "Failed to load file summary.");
         }
         const data = await res.json();
@@ -96,10 +402,14 @@ export function DeepDiveExplorer() {
         setEditorValue(next.code);
         setSummary(next.summary);
         setMermaid(next.mermaid);
-        setCache((prev) => ({
-          ...prev,
-          [selectedPath]: next,
-        }));
+        setCache((prev) => {
+          const newCache = { ...prev };
+          if (selectedPath) {
+            newCache[selectedPath] = next;
+          }
+          return newCache;
+        });
+        setError(null); // Clear any previous errors on success
       } catch (err: unknown) {
         if (controller.signal.aborted) return;
         const message =
@@ -115,50 +425,33 @@ export function DeepDiveExplorer() {
     load();
 
     return () => controller.abort();
-  }, [analysis, selectedPath, cache]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [owner, name, selectedPath]);
 
   return (
-    <main className="flex min-h-dvh items-stretch px-2 py-4 sm:px-4 sm:py-6 lg:px-6">
+    <main className="flex h-screen items-stretch overflow-hidden">
       <PanelGroup
         direction="horizontal"
-        className="glass-panel flex w-full overflow-hidden border border-slate-700/70 bg-slate-950/90"
+        className="glass-panel flex h-full w-full overflow-hidden border border-slate-700/70 bg-slate-950/90 m-2"
       >
         <Panel defaultSize={22} minSize={16} className="border-r border-slate-800/80">
-          <aside className="flex h-full flex-col bg-slate-950/90">
-            <header className="border-b border-slate-800/80 px-3 py-2.5">
+          <aside className="flex h-full flex-col bg-slate-950/90 min-h-0">
+            <header className="border-b border-slate-800/80 px-3 py-2.5 flex-shrink-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                 Files
               </p>
             </header>
-            <div className="flex-1 overflow-y-auto px-2 py-2.5 text-xs">
-              <ul className="space-y-1.5">
-                {fileTree.map((file) => (
-                  <li
-                    key={file.path}
-                    className="flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-slate-900/80 cursor-pointer"
-                    onClick={() => setSelectedPath(file.path)}
-                  >
-                    <span className="truncate font-mono text-[11px] text-slate-200">
-                      {file.path}
-                    </span>
-                    <span
-                      className="ml-2 h-2 w-2 rounded-full"
-                      style={{
-                        background:
-                          file.complexity === "red"
-                            ? "#fb7185"
-                            : file.complexity === "yellow"
-                              ? "#fbbf24"
-                              : "#22c55e",
-                        boxShadow:
-                          file.complexity === "red"
-                            ? "0 0 8px rgba(248,113,113,0.9)"
-                            : file.complexity === "yellow"
-                              ? "0 0 8px rgba(250,204,21,0.9)"
-                              : "0 0 8px rgba(34,197,94,0.9)",
-                      }}
-                    />
-                  </li>
+            <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2.5 text-xs">
+              <ul className="space-y-0.5">
+                {treeStructure.map((item, index) => (
+                  <FileTreeItem
+                    key={`${item.path}-${item.type}-${index}`}
+                    item={item}
+                    selectedPath={selectedPath}
+                    expandedFolders={expandedFolders}
+                    onToggleFolder={handleToggleFolder}
+                    onSelectFile={handleFileSelect}
+                  />
                 ))}
               </ul>
             </div>
@@ -168,8 +461,8 @@ export function DeepDiveExplorer() {
         <PanelResizeHandle className="w-[1px] bg-gradient-to-b from-cyan-400/70 via-slate-600 to-fuchsia-500/80" />
 
         <Panel defaultSize={40} minSize={28} className="border-r border-slate-800/80">
-          <section className="flex h-full flex-col bg-slate-950/90">
-            <header className="border-b border-slate-800/80 px-3 py-2.5">
+          <section className="flex h-full flex-col bg-slate-950/90 min-h-0">
+            <header className="border-b border-slate-800/80 px-3 py-2.5 flex-shrink-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                 Code
               </p>
@@ -177,7 +470,7 @@ export function DeepDiveExplorer() {
                 Loaded directly from GitHub for the analyzed repository.
               </p>
             </header>
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden">
               <Editor
                 theme="vs-dark"
                 defaultLanguage="typescript"
@@ -187,9 +480,13 @@ export function DeepDiveExplorer() {
                   fontSize: 13,
                   minimap: { enabled: false },
                   scrollBeyondLastLine: false,
-                  smoothScrolling: true,
+                  smoothScrolling: false,
+                  renderWhitespace: "none",
+                  renderLineHighlight: "none",
+                  codeLens: false,
                 }}
                 value={editorValue}
+                loading={<div className="text-slate-400">Loading editor...</div>}
               />
             </div>
           </section>
@@ -198,8 +495,8 @@ export function DeepDiveExplorer() {
         <PanelResizeHandle className="w-[1px] bg-gradient-to-b from-fuchsia-500/80 via-slate-600 to-cyan-400/70" />
 
         <Panel defaultSize={38} minSize={26}>
-          <section className="flex h-full flex-col bg-slate-950/90">
-            <header className="border-b border-slate-800/80 px-3 py-2.5">
+          <section className="flex h-full flex-col bg-slate-950/90 min-h-0">
+            <header className="border-b border-slate-800/80 px-3 py-2.5 flex-shrink-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                 The Narrator
               </p>
@@ -207,28 +504,58 @@ export function DeepDiveExplorer() {
                 Context-aware summaries and sequence diagrams.
               </p>
             </header>
-            <div className="grid flex-1 grid-rows-[minmax(0,0.55fr)_minmax(0,0.45fr)] gap-2.5 p-2.5">
+            <div className="grid flex-1 min-h-0 grid-rows-[minmax(0,0.55fr)_minmax(0,0.45fr)] gap-2.5 p-2.5">
               <motion.div
-                className="glass-panel relative overflow-hidden border border-sky-500/30 bg-slate-950/90 px-3 py-2 text-[11px]"
+                className="glass-panel relative flex flex-col overflow-hidden border border-sky-500/30 bg-slate-950/90 px-3 py-2 text-[11px] min-h-0"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-sky-300">
+                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-sky-300 flex-shrink-0">
                   File summary
                 </p>
-                <div className="mt-1 h-full overflow-y-auto pr-1 text-slate-200 text-[11px] markdown-body">
+                <div className="mt-1 flex-1 min-h-0 overflow-y-auto pr-1 text-slate-200 text-[11px] markdown-body">
                   {loading ? (
                     "Analyzing file with Gemini…"
                   ) : error ? (
-                    `Error: ${error}`
+                    <div className="rounded-lg border border-rose-500/30 bg-rose-950/20 p-2 text-rose-300">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <p className="font-medium">Error loading summary</p>
+                        <button
+                          onClick={() => {
+                            setError(null);
+                            // Force reload by clearing cache for this file
+                            setCache((prev) => {
+                              const newCache = { ...prev };
+                              if (selectedPath) {
+                                delete newCache[selectedPath];
+                              }
+                              return newCache;
+                            });
+                            // Force a re-render by updating selectedPath slightly
+                            const currentPath = selectedPath;
+                            setSelectedPath(null);
+                            setTimeout(() => setSelectedPath(currentPath), 10);
+                          }}
+                          className="text-[10px] px-2 py-0.5 rounded border border-rose-400/50 hover:bg-rose-500/20 transition-colors"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-rose-400 whitespace-pre-wrap">{error}</p>
+                      {error.includes("rate limit") && (
+                        <p className="text-[10px] text-rose-300/70 mt-2 italic">
+                          Note: The free tier limit is per API key. If you changed your API key, the new key may also be on the free tier with the same 20 requests/day limit.
+                        </p>
+                      )}
+                    </div>
                   ) : (
                     <ReactMarkdown>{summary}</ReactMarkdown>
                   )}
                 </div>
               </motion.div>
 
-              <div className="glass-panel relative overflow-hidden border border-fuchsia-500/30 bg-slate-950/90 px-3 py-3 text-xs">
-                <div className="mb-1 flex items-center justify-between gap-2">
+              <div className="glass-panel relative flex flex-col overflow-hidden border border-fuchsia-500/30 bg-slate-950/90 px-3 py-3 text-xs min-h-0">
+                <div className="mb-1 flex items-center justify-between gap-2 flex-shrink-0">
                   <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-fuchsia-300">
                     Sequence / architecture diagram
                   </p>
@@ -240,15 +567,52 @@ export function DeepDiveExplorer() {
                     Full screen
                   </button>
                 </div>
-                <div className="mt-1 h-full min-h-[120px]">
+                <div
+                  className="mt-1 flex-1 min-h-0 overflow-auto"
+                  style={{
+                    willChange: "scroll-position",
+                    transform: "translateZ(0)",
+                  }}
+                >
                   {loading && !mermaid ? (
                     <div className="flex h-full items-center justify-center text-[11px] text-slate-400">
                       Generating flow chart with Gemini…
                     </div>
-                  ) : mermaid ? (
-                    <MermaidDiagram code={mermaid} />
+                  ) : mermaid && mermaid.trim() ? (
+                    <div
+                      style={{
+                        willChange: "transform",
+                        transform: "translateZ(0)",
+                        minHeight: "100%",
+                      }}
+                    >
+                      <MermaidDiagram 
+                        key={`workbench-${selectedPath}-${mermaid?.slice(0, 50)}`}
+                        code={mermaid} 
+                        id="mermaid-panel" 
+                      />
+                    </div>
+                  ) : selectedPath ? (
+                    <div className="flex h-full items-center justify-center text-[11px] text-slate-400">
+                      <div className="text-center">
+                        <p>No diagram available for this file.</p>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          Gemini did not generate a diagram for this file.
+                        </p>
+                      </div>
+                    </div>
                   ) : (
-                    <ReactFlow nodes={initialNodes} edges={initialEdges} fitView>
+                    <ReactFlow
+                      nodes={initialNodes}
+                      edges={initialEdges}
+                      fitView
+                      nodesDraggable={false}
+                      nodesConnectable={false}
+                      elementsSelectable={false}
+                      panOnDrag={false}
+                      zoomOnScroll={false}
+                      zoomOnPinch={false}
+                    >
                       <Background
                         color="rgba(148,163,184,0.3)"
                         gap={16}
@@ -278,13 +642,31 @@ export function DeepDiveExplorer() {
                 Close
               </button>
             </div>
-            <div className="h-[calc(100%-2.5rem)] w-full overflow-auto rounded-xl bg-slate-950/90 p-3">
+            <div
+              className="h-[calc(100%-2.5rem)] w-full overflow-auto rounded-xl bg-slate-950/90 p-3"
+              style={{
+                willChange: "scroll-position",
+                transform: "translateZ(0)",
+              }}
+            >
               {loading && !mermaid ? (
                 <div className="flex h-full items-center justify-center text-xs text-slate-400">
                   Generating flow chart with Gemini…
                 </div>
               ) : mermaid ? (
-                <MermaidDiagram code={mermaid} />
+                <div
+                  style={{
+                    willChange: "transform",
+                    transform: "translateZ(0)",
+                    minHeight: "100%",
+                  }}
+                >
+                  <MermaidDiagram 
+                    key={`fullscreen-${mermaid?.slice(0, 50)}`}
+                    code={mermaid} 
+                    id="mermaid-fullscreen" 
+                  />
+                </div>
               ) : (
                 <div className="flex h-full items-center justify-center text-xs text-slate-400">
                   No Mermaid diagram available for this file.

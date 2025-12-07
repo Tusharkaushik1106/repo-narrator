@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { geminiAdapter } from "@/lib/gemini_adapter";
-import type { NarrationMessage, NarrationContext } from "@/lib/types";
+import type { NarrationMessage, NarrationContext, LLMResponseChunk } from "@/lib/types";
 import { inMemoryVectorStoreAdapter } from "@/lib/vector_store_adapter";
 
 export const runtime = "nodejs";
@@ -69,17 +69,25 @@ export async function POST(req: NextRequest) {
         messages,
         context,
         config: { streaming: true },
-        onChunk: async (chunk) => {
+        onChunk: async (chunk: LLMResponseChunk) => {
           if (!chunk.text) return;
           await writer.write(encoder.encode(chunk.text));
         },
       });
-    } catch (error) {
-      await writer.write(
-        encoder.encode(
-          "\n\n[Repo Narrator] Sorry, something went wrong while talking to Gemini.",
-        ),
-      );
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      let userMessage = "\n\n[Repo Narrator] Sorry, something went wrong while talking to Gemini.";
+      
+      // Check for rate limit errors
+      if (errorMessage.includes("429") || errorMessage.includes("quota") || errorMessage.includes("rate limit")) {
+        userMessage = 
+          "\n\n[Repo Narrator] ⚠️ Rate limit exceeded. " +
+          "The Gemini API free tier allows 20 requests per day. " +
+          "Please wait ~60 seconds and try again, or upgrade your API plan. " +
+          "See https://ai.google.dev/gemini-api/docs/rate-limits for more info.";
+      }
+      
+      await writer.write(encoder.encode(userMessage));
     } finally {
       await writer.close();
     }

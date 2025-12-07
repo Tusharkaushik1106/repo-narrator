@@ -33,7 +33,7 @@ export default function RootLayout({
       >
         <RepoProvider>
           <div className="min-h-dvh bg-rn-gradient grid place-items-stretch">
-            {children}
+        {children}
             <OmniChat />
           </div>
         </RepoProvider>

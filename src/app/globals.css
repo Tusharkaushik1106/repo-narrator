@@ -81,21 +81,56 @@ body {
     0 0 40px rgba(34, 211, 238, 0.5);
 }
 
+.markdown-body {
+  line-height: 1.6;
+  color: #e2e8f0;
+}
+
 .markdown-body h2 {
-  font-size: 0.78rem;
+  font-size: 0.875rem;
   font-weight: 600;
+  color: #7dd3fc;
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.025em;
+}
+
+.markdown-body h2:first-child {
   margin-top: 0.25rem;
-  margin-bottom: 0.15rem;
+}
+
+.markdown-body p {
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  margin-bottom: 0.5rem;
+  color: #cbd5e1;
 }
 
 .markdown-body ul {
-  margin-top: 0.1rem;
-  margin-bottom: 0.1rem;
-  padding-left: 1.1rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 1.25rem;
   list-style-type: disc;
 }
 
 .markdown-body li {
-  margin-bottom: 0.1rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: #cbd5e1;
+}
+
+.markdown-body li strong {
+  color: #7dd3fc;
+  font-weight: 600;
+}
+
+.markdown-body code {
+  background-color: rgba(15, 23, 42, 0.6);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-family: var(--font-mono), monospace;
+  color: #a5b4fc;
 }
 

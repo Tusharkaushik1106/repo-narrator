@@ -11,10 +11,13 @@ import {
 import { motion } from "framer-motion";
 import { useRepoContext } from "@/context/RepoContext";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { ProjectOverview } from "./ProjectOverview";
 
 export function CockpitDashboard() {
   const { analysis } = useRepoContext();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"overview" | "project">("overview");
 
   const radarData =
     analysis?.stackRadar?.length &&
@@ -28,8 +31,38 @@ export function CockpitDashboard() {
     : [];
 
   return (
-    <main className="flex min-h-dvh items-stretch px-4 py-6 sm:px-8 lg:px-10">
-      <div className="grid w-full max-w-6xl grid-rows-[minmax(0,1fr)_minmax(0,0.85fr)] gap-4">
+    <main className="flex h-screen flex-col overflow-hidden">
+      {/* Tab Navigation */}
+      <div className="border-b border-slate-800/80 bg-slate-950/90 px-4 sm:px-8 lg:px-10">
+        <div className="mx-auto flex max-w-6xl gap-1">
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === "overview"
+                ? "border-b-2 border-cyan-400 text-cyan-300"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveTab("project")}
+            className={`px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === "project"
+                ? "border-b-2 border-cyan-400 text-cyan-300"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Project Details
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === "overview" ? (
+          <div className="h-full overflow-y-auto px-4 py-6 sm:px-8 lg:px-10">
+            <div className="mx-auto max-w-6xl grid grid-rows-[minmax(0,1fr)_minmax(0,0.85fr)] gap-4">
         <section className="grid grid-cols-[minmax(0,2.3fr)_minmax(0,1.2fr)] gap-4">
           <motion.article
             className="glass-panel relative flex flex-col overflow-hidden p-5 sm:p-7"
@@ -223,6 +256,11 @@ export function CockpitDashboard() {
             </button>
           </motion.section>
         </section>
+      </div>
+          </div>
+        ) : (
+          <ProjectOverview />
+        )}
       </div>
     </main>
   );

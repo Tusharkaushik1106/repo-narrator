@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useRepoContext } from "@/context/RepoContext";
+import { AlertCircle } from "lucide-react";
 
 const steps = [
   { id: "cloning", label: "Cloning repository" },
@@ -14,11 +15,11 @@ const steps = [
 
 export function NeuralLoadingBay() {
   const router = useRouter();
-  const { analysis, status, finishAnalysis, failAnalysis } = useRepoContext();
+  const { analysis, status, error, startAnalysis, finishAnalysis, failAnalysis } = useRepoContext();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   useEffect(() => {
-    if (!analysis?.repoUrl || status === "done") {
+    if (!analysis?.repoUrl || status === "done" || status === "error") {
       return;
     }
 
@@ -34,6 +35,15 @@ export function NeuralLoadingBay() {
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
+          // Handle rate limit errors specifically
+          if (res.status === 429) {
+            const retryAfter = data.retryAfter || 60;
+            throw new Error(
+              `Rate limit exceeded. The Gemini API free tier allows 20 requests per day. ` +
+              `Please wait ${retryAfter} seconds and try again, or upgrade your API plan. ` +
+              `Visit https://ai.google.dev/gemini-api/docs/rate-limits for more information.`
+            );
+          }
           throw new Error(data.error || "Failed to analyze repository");
         }
 
@@ -61,6 +71,58 @@ export function NeuralLoadingBay() {
       clearInterval(stepTimer);
     };
   }, [analysis?.repoUrl, failAnalysis, finishAnalysis, router, status]);
+
+  // Show error state
+  if (status === "error" && error) {
+    return (
+      <main className="flex min-h-dvh items-center justify-center px-4 py-10 sm:px-8 lg:px-16">
+        <div className="glass-panel relative w-full max-w-4xl px-6 py-8 sm:px-10 sm:py-10">
+          <div className="absolute inset-0 rounded-[1.25rem] bg-[radial-gradient(circle_at_50%_0%,rgba(239,68,68,0.2),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(236,72,153,0.2),transparent_55%)] opacity-80 mix-blend-screen" />
+          
+          <div className="relative z-10 space-y-6">
+            <div className="text-center">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-red-400">
+                Analysis Failed
+              </p>
+              <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
+                Unable to analyze repository
+              </h1>
+            </div>
+            
+            <div className="rounded-lg border border-red-500/30 bg-red-950/20 p-6">
+              <p className="text-sm text-red-300 font-medium mb-2">Error:</p>
+              <p className="text-sm text-slate-300 whitespace-pre-wrap">{error}</p>
+            </div>
+            
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => {
+                  router.push("/");
+                }}
+                className="px-6 py-3 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-200 font-medium transition-colors"
+              >
+                Back to Home
+              </button>
+              <button
+                onClick={() => {
+                  if (analysis?.repoUrl) {
+                    router.push("/");
+                    setTimeout(() => {
+                      startAnalysis(analysis.repoUrl);
+                      router.push("/loading");
+                    }, 100);
+                  }
+                }}
+                className="px-6 py-3 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-slate-200 font-medium transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10 sm:px-8 lg:px-16">
