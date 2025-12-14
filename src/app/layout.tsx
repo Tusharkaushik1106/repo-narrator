@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { OmniChat } from "@/components/chat/OmniChat";
 import { RepoProvider } from "@/context/RepoContext";
+import { FileProvider } from "@/context/FileContext";
+import { Header } from "@/components/layout/Header";
+import { SessionProvider } from "@/components/auth/SessionProvider";
 
-const uiFont = Inter({
+const uiFont = Space_Grotesk({
+  weight: ["400", "500", "600", "700"],
   variable: "--font-ui",
   subsets: ["latin"],
   display: "swap",
@@ -17,7 +21,7 @@ const codeFont = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Repo Narrator",
+  title: "gitlore",
   description: "Speak fluent repository. Gemini-powered deep repo explorer.",
 };
 
@@ -31,12 +35,17 @@ export default function RootLayout({
       <body
         className={`${uiFont.variable} ${codeFont.variable} antialiased bg-slate-950 text-slate-50`}
       >
-        <RepoProvider>
-          <div className="min-h-dvh bg-rn-gradient grid place-items-stretch">
-        {children}
-            <OmniChat />
-          </div>
-        </RepoProvider>
+        <SessionProvider>
+          <RepoProvider>
+            <FileProvider>
+              <div className="min-h-dvh bg-rn-gradient grid place-items-stretch transform-gpu">
+                <Header />
+                {children}
+                <OmniChat />
+              </div>
+            </FileProvider>
+          </RepoProvider>
+        </SessionProvider>
       </body>
     </html>
   );

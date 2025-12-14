@@ -1,8 +1,11 @@
 import { NextRequest } from "next/server";
+import { getServerSession } from "next-auth";
+import { authConfig } from "@/lib/auth";
 import { geminiAdapter } from "@/lib/gemini_adapter";
 import type { NarrationMessage } from "@/lib/types";
 import { fetchRepoTree, fetchRawFile } from "@/lib/github";
 import { inMemoryVectorStoreAdapter } from "@/lib/vector_store_adapter";
+import { checkAndRecordUsage, estimateTokens, recordActualUsage } from "@/lib/tokenUsage";
 
 export const runtime = "nodejs";
 
@@ -33,6 +36,15 @@ function parseGitHubUrl(url: string): { owner: string; name: string } | null {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = (await getServerSession(authConfig)) as
+      | { user?: { email?: string | null; id?: string | null } }
+      | null;
+    const userId = session?.user?.email || session?.user?.id;
+
+    if (!userId) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { repoUrl } = (await req.json()) as { repoUrl?: string };
 
     if (!repoUrl) {
@@ -48,7 +60,7 @@ export async function POST(req: NextRequest) {
     const repoId = `${owner}/${name}`;
 
     const headers: HeadersInit = {
-      "User-Agent": "repo-narrator",
+      "User-Agent": "gitlore",
       Accept: "application/vnd.github+json",
     };
 
@@ -79,7 +91,7 @@ export async function POST(req: NextRequest) {
     
     const readmeRes = await fetch(
       `https://raw.githubusercontent.com/${owner}/${name}/HEAD/README.md`,
-      { headers: { "User-Agent": "repo-narrator" } },
+      { headers: { "User-Agent": "gitlore" } },
     );
 
     let readme = "";
@@ -102,21 +114,14 @@ export async function POST(req: NextRequest) {
       .filter(Boolean)
       .join("\\n");
 
+    const optimizedReadme = readme ? readme.slice(0, 1500) : "[no readme]";
+    
     const prompt = [
-      "You are Repo Narrator, a senior staff engineer who explains repositories.",
-      "Given the repository metadata and README, produce:",
-      "1) A tight, non-marketing elevator pitch (2–4 sentences).",
-      "2) A rough stack radar with 5 axes: Frontend, Backend, Auth, Infra, DX. Scores 0–100.",
-      "",
-      "Return your answer as JSON ONLY with shape:",
-      '{ "elevatorPitch": string, "stackRadar": [{ "subject": string, "value": number }] }',
-      "",
-      "Repository metadata:",
-      contextPieces,
-      "",
-      "README.md (may be empty):",
-      readme || "[no readme found]",
-    ].join("\\n");
+      "Analyze repo and return JSON:",
+      '{ "elevatorPitch": "2-4 sentences", "stackRadar": [{"subject": "Frontend|Backend|Auth|Infra|DX", "value": 0-100}] }',
+      `Metadata: ${contextPieces}`,
+      `README: ${optimizedReadme}`,
+    ].join("\n");
 
     const messages: NarrationMessage[] = [
       {
@@ -127,12 +132,32 @@ export async function POST(req: NextRequest) {
       },
     ];
 
+  const estimatedInputTokens = estimateTokens(prompt);
+  const estimatedTokens = estimatedInputTokens + 2000;
+  const usageCheck = await checkAndRecordUsage(userId, estimatedTokens);
+  if (!usageCheck.allowed) {
+    return Response.json(
+      {
+        error: usageCheck.reason || "Usage limit exceeded",
+        retryAfter: usageCheck.retryAfter,
+      },
+      { status: 429 }
+    );
+  }
+
   let completion;
   try {
     completion = await geminiAdapter.chat({
       messages,
       config: { streaming: false },
-    });
+      });
+      
+    const actualResponseTokens = estimateTokens(completion.content);
+    const actualTotalTokens = estimatedInputTokens + actualResponseTokens;
+    const tokenDifference = actualTotalTokens - estimatedTokens;
+    if (tokenDifference !== 0) {
+      await recordActualUsage(userId, tokenDifference);
+    }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     
@@ -175,7 +200,7 @@ export async function POST(req: NextRequest) {
     } catch {
       parsedJson = {
         elevatorPitch:
-          "Repo Narrator could not parse a structured response from Gemini, but this repository appears to be a typical GitHub project.",
+          "gitlore could not parse a structured response from Gemini, but this repository appears to be a typical GitHub project.",
         stackRadar: [
           { subject: "Frontend", value: 60 },
           { subject: "Backend", value: 60 },

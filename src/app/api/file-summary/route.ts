@@ -1,12 +1,24 @@
 import { NextRequest } from "next/server";
+import { getServerSession } from "next-auth";
+import { authConfig } from "@/lib/auth";
 import { fetchRawFile } from "@/lib/github";
 import { geminiAdapter } from "@/lib/gemini_adapter";
 import type { NarrationMessage } from "@/lib/types";
+import { checkAndRecordUsage, estimateTokens, recordActualUsage } from "@/lib/tokenUsage";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = (await getServerSession(authConfig)) as
+      | { user?: { email?: string | null; id?: string | null } }
+      | null;
+    const userId = session?.user?.email || session?.user?.id;
+
+    if (!userId) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const {
       owner,
       name,
@@ -30,34 +42,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const optimizedContent = fileContent.slice(0, 2500);
+
     const prompt = [
-      "You are Repo Narrator, a senior engineer explaining one file in a codebase.",
-      "Given the file content, produce a short JSON description with:",
-      '1) "summary": a concise markdown overview (max ~10 lines). Use headings like "Overview" and "Key responsibilities" plus 3–6 bullet points total. Avoid long paragraphs.',
-      '2) "mermaid": REQUIRED Mermaid JS diagram (sequenceDiagram, flowchart, or graph) capturing the main flow. IMPORTANT:',
-      "   - ALWAYS generate a diagram - it's very useful for understanding code flow",
-      "   - Use valid Mermaid syntax ONLY - no markdown, no code fences, no JSON escaping",
-      "   - MUST start with diagram type declaration: 'sequenceDiagram', 'flowchart TD', or 'graph LR'",
-      "   - Example valid syntax:",
-      "     flowchart TD",
-      "       A[\"Start\"] --> B[\"Process\"]",
-      "       B --> C[\"End\"]",
-      "   - ALWAYS quote ALL node labels that contain spaces, hyphens, or special characters",
-      "   - Ensure every opening bracket [ has a closing bracket ]",
-      "   - Ensure every opening quote \" has a closing quote \"",
-      "   - Do NOT include trailing semicolons",
-      "   - Keep it simple: max 8-10 nodes",
-      "   - For simple files, create a basic flowchart showing the main function/component flow",
-      "   - Only return empty string if the file has no meaningful flow (e.g., pure data/config files)",
-      "   - Return the raw Mermaid code only, nothing else",
-      "",
-      "Return ONLY valid JSON with shape:",
-      '{ "summary": string, "mermaid": string }',
-      "",
-      `File path: ${path}`,
-      "",
-      "File content:",
-      fileContent.slice(0, 4000),
+      "Analyze this file and return JSON:",
+      '{ "summary": "markdown overview (3-6 bullets)", "mermaid": "flowchart TD or sequenceDiagram" }',
+      "Mermaid rules: valid syntax only, quote labels with spaces, max 8 nodes.",
+      `File: ${path}`,
+      `Content:\n${optimizedContent}`,
     ].join("\n");
 
     const messages: NarrationMessage[] = [
@@ -69,12 +61,32 @@ export async function POST(req: NextRequest) {
       },
     ];
 
+    const estimatedInputTokens = estimateTokens(prompt);
+    const estimatedTokens = estimatedInputTokens + 1000;
+    const usageCheck = await checkAndRecordUsage(userId, estimatedTokens);
+    if (!usageCheck.allowed) {
+      return Response.json(
+        {
+          error: usageCheck.reason || "Usage limit exceeded",
+          retryAfter: usageCheck.retryAfter,
+        },
+        { status: 429 }
+      );
+    }
+
     let completion;
     try {
       completion = await geminiAdapter.chat({
         messages,
         config: { streaming: false },
       });
+      
+      const actualResponseTokens = estimateTokens(completion.content);
+      const actualTotalTokens = estimatedInputTokens + actualResponseTokens;
+      const tokenDifference = actualTotalTokens - estimatedTokens;
+      if (tokenDifference !== 0) {
+        await recordActualUsage(userId, tokenDifference);
+      }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       
@@ -103,12 +115,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let parsed:
-      | {
-          summary: string;
-          mermaid: string;
-        }
-      | undefined;
+    let parsed: {
+      summary: string;
+      mermaid: string;
+    };
 
     try {
       const start = completion.content.indexOf("{");
@@ -118,7 +128,7 @@ export async function POST(req: NextRequest) {
     } catch {
       parsed = {
         summary:
-          "Repo Narrator could not parse a structured response, but this file participates in the repository's behavior as shown in the code.",
+          "gitlore could not parse a structured response, but this file participates in the repository's behavior as shown in the code.",
         mermaid: "",
       };
     }

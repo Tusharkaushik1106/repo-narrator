@@ -1,11 +1,25 @@
 import { NextRequest } from "next/server";
+import { getServerSession } from "next-auth";
 import { geminiAdapter } from "@/lib/gemini_adapter";
 import type { NarrationMessage } from "@/lib/types";
+import { authConfig } from "@/lib/auth";
+import { getCachedDiagram, setCachedDiagram, type DiagramPayload } from "@/lib/diagramCache";
+import { fetchDiagram, saveDiagram } from "@/lib/diagramStore";
+import { checkAndRecordUsage, estimateTokens, recordActualUsage } from "@/lib/tokenUsage";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { owner, name, repoUrl, sampleCode, fileTree } = body;
+    const { owner, name, repoUrl, sampleCode, fileTree, forceRefresh = false } = body;
+
+    const session = (await getServerSession(authConfig)) as
+      | { user?: { email?: string | null; id?: string | null } }
+      | null;
+    const userId = session?.user?.email || session?.user?.id;
+
+    if (!userId) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     if (!owner || !name) {
       return Response.json(
@@ -15,6 +29,20 @@ export async function POST(request: NextRequest) {
     }
 
     
+    const cacheKey = `${userId}:${owner}/${name}`;
+    if (!forceRefresh) {
+      const cached = getCachedDiagram(cacheKey);
+      if (cached) {
+        return Response.json(cached);
+      }
+
+      const persisted = await fetchDiagram(userId, owner, name);
+      if (persisted) {
+        setCachedDiagram(cacheKey, persisted);
+        return Response.json(persisted);
+      }
+    }
+
     let readmeContent = "";
     try {
       const readmeRes = await fetch(
@@ -22,27 +50,26 @@ export async function POST(request: NextRequest) {
         {
           headers: {
             Accept: "application/vnd.github.v3+json",
-          },
+          },  
         }
       );
       if (readmeRes.ok) {
         const readmeData = await readmeRes.json();
         const content = Buffer.from(readmeData.content, "base64").toString("utf-8");
-        readmeContent = content.slice(0, 2000); 
+        readmeContent = content.slice(0, 2000);
       }
     } catch {
-      
     }
 
-    
     const fileTreeSummary = fileTree
       ?.slice(0, 30)
       .map((f: { path: string; language: string }) => `${f.path} (${f.language})`)
       .join("\n") || "";
 
-    
+    const repoUrlDisplay = repoUrl || `https://github.com/${owner}/${name}`;
+
     const prompt = [
-      "You are Repo Narrator, analyzing an entire codebase to provide a comprehensive project overview.",
+      "You are gitlore, analyzing an entire codebase to provide a comprehensive project overview.",
       "",
       "Given the repository information, generate a detailed JSON response with:",
       "",
@@ -88,15 +115,15 @@ export async function POST(request: NextRequest) {
       "Repository information:",
       `- Owner: ${owner}`,
       `- Name: ${name}`,
-      `- URL: ${repoUrl || `https:
+      `- URL: ${repoUrlDisplay}`,
       "",
-      "Sample code files:",
-      sampleCode ? sampleCode.slice(0, 3000) : "No sample code available",
+      "Sample code:",
+      sampleCode ? sampleCode.slice(0, 2000) : "No sample code",
       "",
-      "File structure:",
-      fileTreeSummary || "No file tree available",
+      "Files:",
+      fileTreeSummary || "No file tree",
       "",
-      readmeContent ? `README excerpt:\n${readmeContent}` : "",
+      readmeContent ? `README:\n${readmeContent.slice(0, 1000)}` : "",
       "",
       "Return ONLY valid JSON with this exact shape:",
       '{',
@@ -120,12 +147,32 @@ export async function POST(request: NextRequest) {
       },
     ];
 
+    const estimatedInputTokens = estimateTokens(prompt);
+    const estimatedTokens = estimatedInputTokens + 2000; // Buffer for response
+    const usageCheck = await checkAndRecordUsage(userId, estimatedTokens);
+    if (!usageCheck.allowed) {
+      return Response.json(
+        {
+          error: usageCheck.reason || "Usage limit exceeded",
+          retryAfter: usageCheck.retryAfter,
+        },
+        { status: 429 }
+      );
+    }
+
     let completion;
     try {
       completion = await geminiAdapter.chat({
         messages,
         config: { streaming: false },
       });
+      
+      const actualResponseTokens = estimateTokens(completion.content);
+      const actualTotalTokens = estimatedInputTokens + actualResponseTokens;
+      const tokenDifference = actualTotalTokens - estimatedTokens;
+      if (tokenDifference !== 0) {
+        await recordActualUsage(userId, tokenDifference);
+      }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const isRateLimit =
@@ -154,16 +201,7 @@ export async function POST(request: NextRequest) {
     }
 
     
-    let parsed: {
-      overview: string;
-      architecture: string;
-      keyComponents: string[];
-      dataFlow: string;
-      techStack: string[];
-      dependencies: string[];
-      mermaidArchitecture: string;
-      mermaidDataFlow: string;
-    };
+    let parsed: DiagramPayload;
 
     try {
       const start = completion.content.indexOf("{");
@@ -189,6 +227,10 @@ export async function POST(request: NextRequest) {
         mermaidDataFlow: "sequenceDiagram\n  A->>B: Request\n  B-->>A: Response",
       };
     }
+
+    
+    setCachedDiagram(cacheKey, parsed);
+    await saveDiagram(userId, owner, name, parsed);
 
     return Response.json(parsed);
   } catch (error: unknown) {

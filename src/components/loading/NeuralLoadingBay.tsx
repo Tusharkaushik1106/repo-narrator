@@ -26,6 +26,7 @@ export function NeuralLoadingBay() {
     let cancelled = false;
 
     async function run() {
+      if (!analysis) return;
       try {
         const res = await fetch("/api/analyze", {
           method: "POST",
@@ -50,6 +51,8 @@ export function NeuralLoadingBay() {
         const json = await res.json();
         if (cancelled) return;
 
+        window.dispatchEvent(new CustomEvent("usage-updated"));
+        
         finishAnalysis(json);
         router.push("/dashboard");
       } catch (err: unknown) {
@@ -143,7 +146,7 @@ export function NeuralLoadingBay() {
                 .
               </h1>
               <p className="mt-3 text-sm text-slate-300">
-                Repo Narrator is cloning, parsing, and lighting up the structure
+                gitlore is cloning, parsing, and lighting up the structure
                 of your codebase. This usually takes a few moments for medium
                 projects.
               </p>

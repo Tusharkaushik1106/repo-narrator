@@ -5,7 +5,7 @@ import { useRepoContext } from "@/context/RepoContext";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { MermaidDiagram } from "@/components/diagrams/MermaidDiagram";
-import { Loader2 } from "lucide-react";
+import { Loader2, Maximize2, X, Component, ArrowRight } from "lucide-react";
 
 interface ProjectAnalysis {
   overview: string;
@@ -23,6 +23,8 @@ export function ProjectOverview() {
   const [projectAnalysis, setProjectAnalysis] = useState<ProjectAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fullScreenArch, setFullScreenArch] = useState(false);
+  const [fullScreenDataFlow, setFullScreenDataFlow] = useState(false);
 
   useEffect(() => {
     if (!analysis?.owner || !analysis?.name) {
@@ -31,6 +33,7 @@ export function ProjectOverview() {
     }
 
     async function fetchProjectAnalysis() {
+      if (!analysis) return;
       try {
         setLoading(true);
         setError(null);
@@ -58,6 +61,7 @@ export function ProjectOverview() {
 
         const data = await res.json();
         setProjectAnalysis(data);
+        window.dispatchEvent(new CustomEvent("usage-updated"));
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : "Unexpected error loading project analysis.";
@@ -101,7 +105,7 @@ export function ProjectOverview() {
   }
 
   return (
-    <div className="h-full overflow-y-auto px-4 py-6">
+    <div className="h-full overflow-y-auto px-4 py-6 transform-gpu scrollbar-thin">
       <div className="mx-auto max-w-5xl space-y-6">
         
         <motion.section
@@ -125,9 +129,18 @@ export function ProjectOverview() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <h2 className="mb-4 text-lg font-semibold text-slate-50">
-              Architecture Diagram
-            </h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-50">
+                Architecture Diagram
+              </h2>
+              <button
+                onClick={() => setFullScreenArch(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-400/40 bg-slate-800/60 px-3 py-1.5 text-xs font-medium text-cyan-300 transition-colors hover:bg-slate-700/80 hover:border-cyan-400/60"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+                <span>Fullscreen</span>
+              </button>
+            </div>
             <div className="rounded-lg border border-slate-700/50 bg-slate-950/50 p-4">
               <MermaidDiagram
                 key={`arch-${projectAnalysis.mermaidArchitecture?.slice(0, 50)}`}
@@ -146,22 +159,72 @@ export function ProjectOverview() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <h2 className="mb-4 text-lg font-semibold text-slate-50">
-              Key Components
-            </h2>
-            <ul className="space-y-3">
-              {projectAnalysis.keyComponents.map((component, index) => (
-                <li
-                  key={index}
-                  className="flex items-start gap-3 rounded-lg bg-slate-950/60 p-3"
-                >
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-semibold text-cyan-300">
-                    {index + 1}
-                  </span>
-                  <p className="flex-1 text-sm text-slate-200">{component}</p>
-                </li>
-              ))}
-            </ul>
+            <div className="mb-6 flex items-center gap-2">
+              <Component className="h-5 w-5 text-cyan-400" />
+              <h2 className="text-lg font-semibold text-slate-50">
+                Key Components
+              </h2>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+              {projectAnalysis.keyComponents.map((component, index) => {
+                let cleaned = component
+                  .replace(/\*\*/g, "")
+                  .replace(/`([^`]+)`/g, "$1")
+                  .trim();
+
+                const filePathMatch = cleaned.match(/[\(`]([^`\)]+)[\)`]/);
+                let filePath: string | null = null;
+                if (filePathMatch && filePathMatch[1].includes("/")) {
+                  filePath = filePathMatch[1];
+                  cleaned = cleaned.replace(/[\(`][^`\)]+[\)`]/g, "").trim();
+                }
+                const parts = cleaned
+                  .split(/[:–—\-]\s+/)
+                  .map((p) => p.trim())
+                  .filter((p) => p.length > 0);
+                
+                const title = parts.length > 1 ? parts[0] : parts[0] || cleaned;
+                const description = parts.length > 1 
+                  ? parts.slice(1).join(": ").trim()
+                  : null;
+
+                return (
+                  <motion.div
+                    key={index}
+                    className="group relative overflow-hidden rounded-xl border border-slate-700/50 bg-gradient-to-br from-slate-900/80 to-slate-950/80 p-4 transition-all hover:border-cyan-500/40 hover:shadow-lg hover:shadow-cyan-500/10"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 + index * 0.05 }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500/20 to-sky-500/20 ring-1 ring-cyan-500/30">
+                        <span className="text-sm font-bold text-cyan-300">
+                          {index + 1}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="mb-1.5 text-sm font-semibold text-cyan-200 group-hover:text-cyan-100 transition-colors">
+                          {title}
+                        </h3>
+                        {filePath && (
+                          <div className="mb-2 inline-flex items-center gap-1.5 rounded-md bg-slate-800/60 px-2 py-0.5">
+                            <span className="text-[10px] font-mono text-slate-400">
+                              {filePath}
+                            </span>
+                          </div>
+                        )}
+                        {description && (
+                          <p className="text-sm leading-relaxed text-slate-300">
+                            {description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="absolute bottom-0 right-0 h-px w-0 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent transition-all group-hover:w-full" />
+                  </motion.div>
+                );
+              })}
+            </div>
           </motion.section>
         )}
 
@@ -173,9 +236,18 @@ export function ProjectOverview() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <h2 className="mb-4 text-lg font-semibold text-slate-50">
-              Data Flow
-            </h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-50">
+                Data Flow
+              </h2>
+              <button
+                onClick={() => setFullScreenDataFlow(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-400/40 bg-slate-800/60 px-3 py-1.5 text-xs font-medium text-cyan-300 transition-colors hover:bg-slate-700/80 hover:border-cyan-400/60"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+                <span>Fullscreen</span>
+              </button>
+            </div>
             <div className="rounded-lg border border-slate-700/50 bg-slate-950/50 p-4">
               <MermaidDiagram
                 code={projectAnalysis.mermaidDataFlow}
@@ -239,6 +311,68 @@ export function ProjectOverview() {
           </motion.section>
         )}
       </div>
+      {fullScreenArch && projectAnalysis.mermaidArchitecture && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-xl">
+          <div className="relative h-[85vh] w-[90vw] max-w-6xl rounded-2xl border border-cyan-500/60 bg-slate-950/95 p-4 shadow-2xl shadow-cyan-500/30">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
+                Architecture Diagram – Fullscreen
+              </p>
+              <button
+                type="button"
+                onClick={() => setFullScreenArch(false)}
+                className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs text-slate-200 transition-colors hover:bg-slate-800"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div
+              className="h-[calc(100%-3rem)] w-full overflow-auto rounded-xl bg-slate-950/90 p-4"
+              style={{
+                willChange: "scroll-position",
+                transform: "translateZ(0)",
+              }}
+            >
+              <MermaidDiagram
+                key={`arch-fullscreen-${projectAnalysis.mermaidArchitecture?.slice(0, 50)}`}
+                code={projectAnalysis.mermaidArchitecture}
+                id="project-architecture-fullscreen"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      {fullScreenDataFlow && projectAnalysis.mermaidDataFlow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-xl">
+          <div className="relative h-[85vh] w-[90vw] max-w-6xl rounded-2xl border border-fuchsia-500/60 bg-slate-950/95 p-4 shadow-2xl shadow-fuchsia-500/30">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-300">
+                Data Flow Diagram – Fullscreen
+              </p>
+              <button
+                type="button"
+                onClick={() => setFullScreenDataFlow(false)}
+                className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs text-slate-200 transition-colors hover:bg-slate-800"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div
+              className="h-[calc(100%-3rem)] w-full overflow-auto rounded-xl bg-slate-950/90 p-4"
+              style={{
+                willChange: "scroll-position",
+                transform: "translateZ(0)",
+              }}
+            >
+              <MermaidDiagram
+                key={`dataflow-fullscreen-${projectAnalysis.mermaidDataFlow?.slice(0, 50)}`}
+                code={projectAnalysis.mermaidDataFlow}
+                id="project-dataflow-fullscreen"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

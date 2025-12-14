@@ -1,12 +1,12 @@
 import { randomUUID } from "crypto";
 import { GoogleGenerativeAI, type GenerativeModel } from "@google/generative-ai";
 import type {
-  LLMAdapter,
   LLMModelConfig,
   LLMResponseChunk,
   NarrationContext,
   NarrationMessage,
 } from "./types";
+import type { LLMAdapter } from "./llm_adapter";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
@@ -30,7 +30,7 @@ export const geminiAdapter: LLMAdapter = {
     const model = createClient(config);
 
     const systemPrefix =
-      "You are Repo Narrator, an expert software explainer. " +
+      "You are gitlore, an expert software explainer. " +
       "You explain repositories in multiple levels of abstraction, " +
       "and you always ground explanations in the provided code context when available.\n\n";
 
@@ -62,7 +62,6 @@ export const geminiAdapter: LLMAdapter = {
         };
         return finalMessage;
       } catch (error: unknown) {
-        
         const isRateLimit = 
           (error && typeof error === "object" && "status" in error && error.status === 429) ||
           (error instanceof Error && (
@@ -112,7 +111,6 @@ export const geminiAdapter: LLMAdapter = {
 
       return finalMessage;
     } catch (error: unknown) {
-      
       const isRateLimit = 
         (error && typeof error === "object" && "status" in error && error.status === 429) ||
         (error instanceof Error && (

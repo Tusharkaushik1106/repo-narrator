@@ -2,7 +2,7 @@ const GITHUB_BASE = "https://api.github.com";
 
 function getAuthHeaders(): HeadersInit {
   const headers: HeadersInit = {
-    "User-Agent": "repo-narrator",
+    "User-Agent": "gitlore",
     Accept: "application/vnd.github+json",
   };
   const pat = process.env.GITHUB_PAT;
@@ -50,7 +50,7 @@ export async function fetchRawFile(
 ): Promise<string> {
   const res = await fetch(
     `https://raw.githubusercontent.com/${owner}/${name}/HEAD/${path}`,
-    { headers: { "User-Agent": "repo-narrator" } },
+    { headers: { "User-Agent": "gitlore" } },
   );
   if (!res.ok) {
     throw new Error(`Failed to fetch raw file: ${path}`);

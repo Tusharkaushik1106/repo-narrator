@@ -6,6 +6,29 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import clsx from "clsx";
 import { useRepoContext } from "@/context/RepoContext";
+import { NeuralBackground } from "@/components/ui/neural-background";
+import { Poppins, Space_Grotesk, Playfair_Display } from "next/font/google";
+
+const poppins = Poppins({
+  weight: ["400", "500", "600"],
+  subsets: ["latin"],
+  variable: "--font-poppins",
+  display: "swap",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  weight: ["400", "500", "600"],
+  subsets: ["latin"],
+  variable: "--font-space",
+  display: "swap",
+});
+
+const playfair = Playfair_Display({
+  weight: ["400", "500", "600"],
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  display: "swap",
+});
 
 export function HeroLanding() {
   const router = useRouter();
@@ -25,16 +48,17 @@ export function HeroLanding() {
   };
 
   return (
-    <main className="relative flex min-h-dvh items-center justify-center px-4 py-10 sm:px-8 lg:px-16">
-      <motion.div
-        className={clsx(
-          "glass-panel relative w-full max-w-5xl px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12",
-        )}
-        initial={{ opacity: 0, scale: 0.96, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 90, damping: 18 }}
-      >
-        <div className="pointer-events-none absolute inset-0 rounded-[1.25rem] bg-[radial-gradient(circle_at_0%_0%,rgba(34,211,238,0.25),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(236,72,153,0.25),transparent_55%)] opacity-60 mix-blend-screen" />
+    <main className="relative min-h-dvh w-full overflow-hidden transform-gpu">
+      <NeuralBackground />
+      <div className="relative z-10 flex min-h-dvh items-center justify-center px-4 pt-24 pb-10 sm:px-8 lg:px-16">
+        <motion.div
+          className={clsx(
+            "glass-panel relative w-full max-w-5xl px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12",
+          )}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
 
         <div className="relative z-10 grid gap-10 lg:grid-cols-[3fr,2fr] lg:items-center">
           <section>
@@ -55,10 +79,12 @@ export function HeroLanding() {
               .
             </h1>
 
-            <p className="mt-5 max-w-xl text-balance text-sm leading-relaxed text-slate-300 sm:text-base">
-              Paste any GitHub repo. Watch Repo Narrator and Gemini map every
-              file, function, and dependency into a glowing neural diagram you
-              can actually reason about.
+            <p className={`mt-5 max-w-xl text-balance text-sm leading-relaxed sm:text-base ${poppins.variable} ${spaceGrotesk.variable} ${playfair.variable}`}>
+              <span className={`text-slate-300 ${poppins.className} font-normal`}>Drop your github repository and watch </span>
+              <span className={`font-semibold bg-gradient-to-r from-cyan-300 via-cyan-200 to-cyan-300 bg-clip-text text-transparent ${spaceGrotesk.className}`} style={{ fontFamily: 'var(--font-space)' }}>gitlore</span>
+              <span className={`text-slate-300 ${poppins.className} font-normal`}> summarize every file, function, and dependency like a </span>
+              <span className={`font-semibold bg-gradient-to-r from-purple-300 via-purple-200 to-purple-300 bg-clip-text text-transparent ${playfair.className}`} style={{ fontFamily: 'var(--font-playfair)' }}>loyal one</span>
+              <span className={`text-slate-300 ${poppins.className} font-normal`}>.</span>
             </p>
 
             <form
@@ -68,28 +94,23 @@ export function HeroLanding() {
               <label className="block text-xs font-medium uppercase tracking-[0.2em] text-slate-400">
                 Input Hub
               </label>
-              <motion.div
+              <div
                 className={clsx(
-                  "relative flex flex-col gap-3 rounded-2xl bg-slate-950/60 p-3 sm:flex-row sm:items-center sm:p-3.5",
+                  "relative flex flex-col gap-3 rounded-2xl bg-slate-950/60 p-3 sm:flex-row sm:items-center sm:p-3.5 transition-shadow duration-300",
                   "focus-within:ring-2 focus-within:ring-cyan-400/80 focus-within:ring-offset-0",
+                  canSubmit
+                    ? "shadow-[0_0_20px_0_rgba(34,211,238,0.4)]"
+                    : "shadow-[0_0_10px_0_rgba(15,23,42,0.5)]",
                 )}
-                initial={{ boxShadow: "0 0 0 0 rgba(34,211,238,0.0)" }}
-                animate={{
-                  boxShadow: canSubmit
-                    ? "0 0 40px 0 rgba(34,211,238,0.55)"
-                    : "0 0 26px 0 rgba(15,23,42,0.9)",
-                }}
-                transition={{ duration: 0.6, type: "spring" }}
               >
-                <motion.div
+                <div
                   className="pointer-events-none absolute inset-[-2px] rounded-[1.4rem] bg-[conic-gradient(from_120deg_at_50%_50%,rgba(34,211,238,0.9),rgba(168,85,247,0.9),rgba(236,72,153,0.9),rgba(34,211,238,0.9))] opacity-70"
-                  animate={{
-                    rotate: 360,
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 22,
-                    ease: "linear",
+                  style={{
+                    animation: "rotate-gradient 22s linear infinite",
+                    willChange: "transform",
+                    transform: "translateZ(0)",
+                    WebkitBackfaceVisibility: "hidden",
+                    backfaceVisibility: "hidden",
                   }}
                 />
                 <div className="relative flex-1 rounded-2xl bg-slate-950/90 px-4 py-2.5">
@@ -116,7 +137,7 @@ export function HeroLanding() {
                     <Sparkles className="h-4 w-4" />
                   </button>
                 </div>
-              </motion.div>
+              </div>
 
               <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
                 <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-900/80 px-2.5 py-1">
@@ -132,11 +153,10 @@ export function HeroLanding() {
           <section className="relative">
             <motion.div
               className="glass-panel relative h-full min-h-[260px] overflow-hidden border border-cyan-400/20 bg-gradient-to-b from-slate-950/90 to-slate-900/60"
-              initial={{ opacity: 0, y: 18, scale: 0.96 }}
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ delay: 0.08, type: "spring", stiffness: 90 }}
+              transition={{ delay: 0.15, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(56,189,248,0.35),transparent_50%),radial-gradient(circle_at_80%_80%,rgba(236,72,153,0.4),transparent_55%)] mix-blend-screen" />
 
               <div className="relative z-10 flex h-full flex-col justify-between p-5">
                 <div className="space-y-1.5">
@@ -144,7 +164,7 @@ export function HeroLanding() {
                     Neural Loading Bay
                   </p>
                   <p className="text-xs text-slate-300">
-                    Repo Narrator will:
+                    gitlore will:
                   </p>
                 </div>
 
@@ -163,23 +183,18 @@ export function HeroLanding() {
                   </li>
                 </ol>
 
-                <div className="mt-4 grid grid-cols-2 gap-3 text-[11px] text-slate-300">
-                  <div className="rounded-xl bg-slate-950/50 p-3 ring-1 ring-cyan-400/30">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-200/90">
-                      Gemini
-                    </p>
-                    <p className="mt-1 font-mono text-xs text-cyan-100">
-                      gemini-1.5-pro
-                    </p>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-cyan-500/10 to-sky-500/10 px-3 py-1.5 border border-cyan-400/20">
+                    <div className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                    <span className="text-[10px] font-medium text-cyan-200">Real-time Analysis</span>
                   </div>
-                  <div className="rounded-xl bg-slate-950/50 p-3 ring-1 ring-fuchsia-400/40">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-fuchsia-200/90">
-                      Narrator
-                    </p>
-                    <p className="mt-1 text-xs text-slate-100">
-                      Multi-level explanations, architecture diagrams, and
-                      RAG-backed Q&amp;A.
-                    </p>
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-fuchsia-500/10 to-pink-500/10 px-3 py-1.5 border border-fuchsia-400/20">
+                    <div className="h-1.5 w-1.5 rounded-full bg-fuchsia-400 animate-pulse" />
+                    <span className="text-[10px] font-medium text-fuchsia-200">Smart Diagrams</span>
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500/10 to-teal-500/10 px-3 py-1.5 border border-emerald-400/20">
+                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-[10px] font-medium text-emerald-200">RAG-Powered Q&A</span>
                   </div>
                 </div>
               </div>
@@ -187,6 +202,7 @@ export function HeroLanding() {
           </section>
         </div>
       </motion.div>
+      </div>
     </main>
   );
 }

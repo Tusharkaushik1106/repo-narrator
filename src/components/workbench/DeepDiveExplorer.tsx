@@ -6,10 +6,13 @@ import "reactflow/dist/style.css";
 import Editor from "@monaco-editor/react";
 import { motion } from "framer-motion";
 import { useRepoContext } from "@/context/RepoContext";
+import { useFileContext } from "@/context/FileContext";
 import { useEffect, useState, useMemo, useCallback, memo } from "react";
 import { MermaidDiagram } from "@/components/diagrams/MermaidDiagram";
 import ReactMarkdown from "react-markdown";
-import { ChevronRight, ChevronDown, Folder, File, Route, Zap } from "lucide-react";
+import { ChevronRight, ChevronDown, Folder, File, Route, Zap, Sparkles } from "lucide-react";
+import { AuthButton } from "@/components/auth/AuthButton";
+import Link from "next/link";
 
 const initialNodes = [
   {
@@ -264,6 +267,7 @@ FileTreeItem.displayName = "FileTreeItem";
 
 export function DeepDiveExplorer() {
   const { analysis } = useRepoContext();
+  const { setCurrentFile } = useFileContext();
 
   
   const fileTree = useMemo(() => {
@@ -352,13 +356,18 @@ export function DeepDiveExplorer() {
   const name = analysis?.name ?? "";
 
   useEffect(() => {
-    if (!analysis || !selectedPath || !owner || !name) return;
+    if (!selectedPath) {
+      setCurrentFile(null);
+      return;
+    }
+    
+    if (!analysis || !owner || !name) return;
 
     
     const cached = cache[selectedPath];
     if (cached && !error) {
       setEditorValue(cached.code);
-      setSummary(cached.summary);
+      setSummary(typeof cached.summary === "string" ? cached.summary : String(cached.summary || ""));
       setMermaid(cached.mermaid);
       setError(null); 
       return;
@@ -394,9 +403,10 @@ export function DeepDiveExplorer() {
           throw new Error(data.error || "Failed to load file summary.");
         }
         const data = await res.json();
+        window.dispatchEvent(new CustomEvent("usage-updated"));
         const next = {
           code: data.code as string,
-          summary: data.summary as string,
+          summary: typeof data.summary === "string" ? data.summary : String(data.summary || ""),
           mermaid: (data.mermaid ?? null) as string | null,
         };
         setEditorValue(next.code);
@@ -409,7 +419,14 @@ export function DeepDiveExplorer() {
           }
           return newCache;
         });
-        setError(null); 
+        setError(null);
+        if (selectedPath) {
+          setCurrentFile({
+            path: selectedPath,
+            content: next.code,
+            language: selectedPath.split(".").pop() || undefined,
+          });
+        } 
       } catch (err: unknown) {
         if (controller.signal.aborted) return;
         const message =
@@ -429,11 +446,42 @@ export function DeepDiveExplorer() {
   }, [owner, name, selectedPath]);
 
   return (
-    <main className="flex h-screen items-stretch overflow-hidden">
-      <PanelGroup
-        direction="horizontal"
-        className="glass-panel flex h-full w-full overflow-hidden border border-slate-700/70 bg-slate-950/90 m-2"
-      >
+    <main className="flex h-screen flex-col overflow-hidden">
+      <div className="border-b border-slate-800/80 bg-slate-950/90 shadow-lg shadow-slate-900/30 px-4 sm:px-6 lg:px-8 flex-shrink-0">
+        <div className="mx-auto flex max-w-7xl items-center justify-between h-14">
+          <div className="flex items-center gap-6">
+            <Link
+              href="/"
+              className="group inline-flex items-center gap-2.5 text-base font-semibold text-slate-50 transition-all hover:text-cyan-400"
+            >
+              <div className="relative h-6 w-6">
+                <img 
+                  src="/logo.png" 
+                  alt="gitlore Logo" 
+                  className="h-full w-full object-contain transition-transform group-hover:rotate-12" 
+                />
+                <div className="absolute inset-0 h-6 w-6 animate-pulse rounded-full bg-cyan-400/20 blur-sm" />
+              </div>
+              <span className="bg-gradient-to-r from-slate-50 to-slate-300 bg-clip-text text-transparent group-hover:from-cyan-300 group-hover:to-cyan-100 transition-all">
+                gitlore
+              </span>
+            </Link>
+            <div className="h-6 w-px bg-slate-700/50" />
+            <Link
+              href="/dashboard"
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-400 transition-all hover:bg-slate-800/60 hover:text-cyan-300"
+            >
+              Dashboard
+            </Link>
+          </div>
+          <AuthButton />
+        </div>
+      </div>
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <PanelGroup
+          direction="horizontal"
+          className="glass-panel flex h-full w-full overflow-hidden border border-slate-700/70 bg-slate-950/90 m-2"
+        >
         <Panel defaultSize={22} minSize={16} className="border-r border-slate-800/80">
           <aside className="flex h-full flex-col bg-slate-950/90 min-h-0">
             <header className="border-b border-slate-800/80 px-3 py-2.5 flex-shrink-0">
@@ -441,7 +489,7 @@ export function DeepDiveExplorer() {
                 Files
               </p>
             </header>
-            <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2.5 text-xs">
+            <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2.5 text-xs transform-gpu scrollbar-thin">
               <ul className="space-y-0.5">
                 {treeStructure.map((item, index) => (
                   <FileTreeItem
@@ -513,7 +561,7 @@ export function DeepDiveExplorer() {
                 <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-sky-300 flex-shrink-0">
                   File summary
                 </p>
-                <div className="mt-1 flex-1 min-h-0 overflow-y-auto pr-1 text-slate-200 text-[11px] markdown-body">
+                <div className="mt-1 flex-1 min-h-0 overflow-y-auto pr-1 text-slate-200 text-[11px] markdown-body transform-gpu scrollbar-thin">
                   {loading ? (
                     "Analyzing file with Gemini…"
                   ) : error ? (
@@ -549,7 +597,9 @@ export function DeepDiveExplorer() {
                       )}
                     </div>
                   ) : (
-                    <ReactMarkdown>{summary}</ReactMarkdown>
+                    <ReactMarkdown>
+                      {typeof summary === "string" ? summary : String(summary || "")}
+                    </ReactMarkdown>
                   )}
                 </div>
               </motion.div>
@@ -625,7 +675,8 @@ export function DeepDiveExplorer() {
             </div>
           </section>
         </Panel>
-      </PanelGroup>
+        </PanelGroup>
+      </div>
 
       {fullScreen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xl">
