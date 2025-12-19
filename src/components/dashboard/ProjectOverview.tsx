@@ -25,6 +25,10 @@ export function ProjectOverview() {
   const [error, setError] = useState<string | null>(null);
   const [fullScreenArch, setFullScreenArch] = useState(false);
   const [fullScreenDataFlow, setFullScreenDataFlow] = useState(false);
+  const [archRenderError, setArchRenderError] = useState<string | null>(null);
+  const [dataRenderError, setDataRenderError] = useState<string | null>(null);
+  const [showArchRaw, setShowArchRaw] = useState(false);
+  const [showDataRaw, setShowDataRaw] = useState(false);
 
   useEffect(() => {
     if (!analysis?.owner || !analysis?.name) {
@@ -141,12 +145,30 @@ export function ProjectOverview() {
                 <span>Fullscreen</span>
               </button>
             </div>
-            <div className="rounded-lg border border-slate-700/50 bg-slate-950/50 p-4">
+            <div className="rounded-lg border border-slate-700/50 bg-slate-950/50 p-4 space-y-2">
+              {archRenderError && (
+                <div className="rounded-md border border-amber-500/40 bg-amber-950/20 px-3 py-2 text-xs text-amber-200">
+                  {archRenderError}{" "}
+                  <button
+                    type="button"
+                    onClick={() => setShowArchRaw((s) => !s)}
+                    className="underline decoration-dotted underline-offset-4 text-amber-100 hover:text-amber-50 ml-1"
+                  >
+                    {showArchRaw ? "Hide raw code" : "Show raw code"}
+                  </button>
+                </div>
+              )}
               <MermaidDiagram
                 key={`arch-${projectAnalysis.mermaidArchitecture?.slice(0, 50)}`}
                 code={projectAnalysis.mermaidArchitecture}
                 id="project-architecture"
+                onError={(msg) => setArchRenderError(msg)}
               />
+              {showArchRaw && (
+                <pre className="whitespace-pre-wrap break-words rounded-md bg-slate-900/70 p-3 text-[11px] text-slate-200 border border-slate-700/60">
+                  {projectAnalysis.mermaidArchitecture}
+                </pre>
+              )}
             </div>
           </motion.section>
         )}
@@ -248,11 +270,29 @@ export function ProjectOverview() {
                 <span>Fullscreen</span>
               </button>
             </div>
-            <div className="rounded-lg border border-slate-700/50 bg-slate-950/50 p-4">
+            <div className="rounded-lg border border-slate-700/50 bg-slate-950/50 p-4 space-y-2">
+              {dataRenderError && (
+                <div className="rounded-md border border-amber-500/40 bg-amber-950/20 px-3 py-2 text-xs text-amber-200">
+                  {dataRenderError}{" "}
+                  <button
+                    type="button"
+                    onClick={() => setShowDataRaw((s) => !s)}
+                    className="underline decoration-dotted underline-offset-4 text-amber-100 hover:text-amber-50 ml-1"
+                  >
+                    {showDataRaw ? "Hide raw code" : "Show raw code"}
+                  </button>
+                </div>
+              )}
               <MermaidDiagram
                 code={projectAnalysis.mermaidDataFlow}
                 id="project-dataflow"
+                onError={(msg) => setDataRenderError(msg)}
               />
+              {showDataRaw && (
+                <pre className="whitespace-pre-wrap break-words rounded-md bg-slate-900/70 p-3 text-[11px] text-slate-200 border border-slate-700/60">
+                  {projectAnalysis.mermaidDataFlow}
+                </pre>
+              )}
             </div>
             {projectAnalysis.dataFlow && (
               <div className="mt-4 text-sm text-slate-300">
@@ -337,6 +377,7 @@ export function ProjectOverview() {
                 key={`arch-fullscreen-${projectAnalysis.mermaidArchitecture?.slice(0, 50)}`}
                 code={projectAnalysis.mermaidArchitecture}
                 id="project-architecture-fullscreen"
+                onError={(msg) => setArchRenderError(msg)}
               />
             </div>
           </div>
@@ -368,6 +409,7 @@ export function ProjectOverview() {
                 key={`dataflow-fullscreen-${projectAnalysis.mermaidDataFlow?.slice(0, 50)}`}
                 code={projectAnalysis.mermaidDataFlow}
                 id="project-dataflow-fullscreen"
+                onError={(msg) => setDataRenderError(msg)}
               />
             </div>
           </div>

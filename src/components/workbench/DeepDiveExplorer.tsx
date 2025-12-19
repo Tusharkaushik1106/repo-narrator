@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -7,12 +8,30 @@ import Editor from "@monaco-editor/react";
 import { motion } from "framer-motion";
 import { useRepoContext } from "@/context/RepoContext";
 import { useFileContext } from "@/context/FileContext";
-import { useEffect, useState, useMemo, useCallback, memo } from "react";
+import { useEffect, useState, useMemo, useCallback, memo, useRef } from "react";
 import { MermaidDiagram } from "@/components/diagrams/MermaidDiagram";
 import ReactMarkdown from "react-markdown";
 import { ChevronRight, ChevronDown, Folder, File, Route, Zap, Sparkles } from "lucide-react";
 import { AuthButton } from "@/components/auth/AuthButton";
 import Link from "next/link";
+
+// --- 1. NEW SANITIZER UTILITY ---
+function cleanMermaidCode(raw: string | null): string | null {
+  if (!raw) return null;
+  
+  // 1. Remove markdown code fences
+  let cleaned = raw.replace(/```mermaid/g, "").replace(/```/g, "");
+
+  // 2. Fix common Gemini Flash syntax errors (missing newlines between nodes)
+  // Example fix: "Node A" --> "Node B"NodeC --> NodeD
+  cleaned = cleaned.replace(/("[^"]+")([A-Za-z0-9]+)/g, '$1\n$2');
+
+  // 3. Trim whitespace
+  cleaned = cleaned.trim();
+
+  return cleaned;
+}
+// --------------------------------
 
 const initialNodes = [
   {
@@ -59,7 +78,6 @@ function buildFileTree(
   const tree: FileTreeItem[] = [];
   const pathMap = new Map<string, FileTreeItem>();
 
-  
   const sortedEntries = [...entries].sort((a, b) => {
     const aIsFolder = a.type === "folder";
     const bIsFolder = b.type === "folder";
@@ -73,19 +91,17 @@ function buildFileTree(
     const itemName = parts.pop()!;
     const isFolder = entry.type === "folder";
 
-    
     let isRoute = false;
     let isImportant = false;
 
     if (!isFolder) {
-      
       isRoute =
         entry.path.includes("/route.") ||
         entry.path.includes("/api/") ||
         (entry.path.includes("/app/") && (itemName === "page.tsx" || itemName === "page.ts" || itemName === "page.jsx" || itemName === "page.js")) ||
         entry.path.includes("/pages/") ||
         !!itemName.match(/^route\.(ts|tsx|js|jsx)$/);
-      
+
       isImportant =
         entry.complexity === "red" ||
         entry.complexity === "yellow" ||
@@ -99,7 +115,6 @@ function buildFileTree(
         itemName === ".env.example";
     }
 
-    
     let currentPath = "";
     let currentLevel = tree;
 
@@ -118,16 +133,12 @@ function buildFileTree(
         currentLevel.push(folder);
         currentLevel = folder.children!;
       } else {
-        
         const folder = pathMap.get(currentPath)!;
         currentLevel = folder.children!;
       }
     }
 
-    
     if (isFolder) {
-      
-      
       if (!pathMap.has(entry.path)) {
         const folder: FileTreeItem = {
           name: itemName,
@@ -139,7 +150,6 @@ function buildFileTree(
         currentLevel.push(folder);
       }
     } else {
-      
       const existingFile = currentLevel.find(
         (item) => item.path === entry.path && item.type === "file",
       );
@@ -269,12 +279,10 @@ export function DeepDiveExplorer() {
   const { analysis } = useRepoContext();
   const { setCurrentFile } = useFileContext();
 
-  
   const fileTree = useMemo(() => {
     if (analysis?.fullFileTree && analysis.fullFileTree.length > 0) {
       return analysis.fullFileTree;
     }
-    
     return (analysis?.sampleFileTree ?? []).map((file) => ({
       path: file.path,
       type: "file" as const,
@@ -290,11 +298,10 @@ export function DeepDiveExplorer() {
 
   const treeStructure = useMemo(() => buildFileTree(fileTree), [fileTree]);
 
-  
   useEffect(() => {
     if (!selectedPath) return;
     const parts = selectedPath.split("/");
-    parts.pop(); 
+    parts.pop();
     const pathsToExpand = new Set<string>();
     let currentPath = "";
     for (const part of parts) {
@@ -309,6 +316,8 @@ export function DeepDiveExplorer() {
   }, [selectedPath]);
 
   const handleFileSelect = useCallback((path: string) => {
+    setError(null);
+    setLoading(false);
     setSelectedPath(path);
   }, []);
 
@@ -323,10 +332,15 @@ export function DeepDiveExplorer() {
       return next;
     });
   }, []);
-  const [editorValue, setEditorValue] = useState(
-    analysis?.sampleCode ||
+
+  const defaultEditorValue = useMemo(
+    () =>
+      analysis?.sampleCode ||
       `// Deep Dive Explorer\n// Paste a GitHub URL on the home screen to see real repo context here.\n`,
+    [analysis?.sampleCode],
   );
+
+  const [editorValue, setEditorValue] = useState(defaultEditorValue);
   const [summary, setSummary] = useState<string>(
     "Select a file to see an explanation of its role in the repo.",
   );
@@ -335,18 +349,15 @@ export function DeepDiveExplorer() {
   const [error, setError] = useState<string | null>(null);
   const [fullScreen, setFullScreen] = useState(false);
 
-  
   const [cache, setCache] = useState<
     Record<string, { code: string; summary: string; mermaid: string | null }>
   >({});
-  
-  
+  const activeRequest = useRef<AbortController | null>(null);
+  const activeFileFetch = useRef<AbortController | null>(null);
+
   useEffect(() => {
-    
     const lastApiKeyChange = localStorage.getItem("lastApiKeyChange");
-    const cacheVersion = localStorage.getItem("cacheVersion") || "0";
     if (lastApiKeyChange && Date.now() - parseInt(lastApiKeyChange) < 60000) {
-      
       setCache({});
       localStorage.removeItem("lastApiKeyChange");
     }
@@ -354,96 +365,183 @@ export function DeepDiveExplorer() {
 
   const owner = analysis?.owner ?? "";
   const name = analysis?.name ?? "";
+  const showGenerateCta = Boolean(selectedPath && !loading && !error && !cache[selectedPath]);
+  const canGenerate = Boolean(owner && name && selectedPath);
+
+  useEffect(
+    () => () => {
+      activeRequest.current?.abort();
+      activeFileFetch.current?.abort();
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!selectedPath) {
       setCurrentFile(null);
+      setSummary("Select a file to see an explanation of its role in the repo.");
+      setMermaid(null);
+      setError(null);
+      setLoading(false);
+      setEditorValue(defaultEditorValue);
       return;
     }
-    
-    if (!analysis || !owner || !name) return;
 
-    
     const cached = cache[selectedPath];
-    if (cached && !error) {
+    if (cached) {
       setEditorValue(cached.code);
       setSummary(typeof cached.summary === "string" ? cached.summary : String(cached.summary || ""));
       setMermaid(cached.mermaid);
-      setError(null); 
+      setError(null);
+      setCurrentFile({
+        path: selectedPath,
+        content: cached.code,
+        language: selectedPath.split(".").pop() || undefined,
+      });
       return;
     }
 
-    const controller = new AbortController();
+    // If not cached, immediately fetch the file content from GitHub
+    if (owner && name && selectedPath) {
+      // Abort any previous file fetch
+      activeFileFetch.current?.abort();
+      const controller = new AbortController();
+      activeFileFetch.current = controller;
 
-    async function load() {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await fetch("/api/file-summary", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            owner,
-            name,
-            path: selectedPath,
-          }),
-          signal: controller.signal,
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
+      setLoading(true);
+      setError(null);
+      setSummary('Loading file content...');
+      setMermaid(null);
+      
+      // Fetch raw file content directly from GitHub
+      fetch(`https://raw.githubusercontent.com/${owner}/${name}/HEAD/${selectedPath}`, {
+        headers: { "User-Agent": "gitlore" },
+        signal: controller.signal,
+      })
+        .then(async (res) => {
+          if (controller.signal.aborted) return;
+          if (!res.ok) {
+            throw new Error(`Failed to fetch file: ${selectedPath}`);
+          }
+          const fileContent: string = await res.text();
           
-          if (res.status === 429) {
-            const retryAfter = data.retryAfter || 60;
-            throw new Error(
-              `Rate limit exceeded. The Gemini API free tier allows 20 requests per day. ` +
-              `Please wait ${retryAfter} seconds and try again, or upgrade your API plan. ` +
-              `Visit https://ai.google.dev/gemini-api/docs/rate-limits for more information.`
-            );
-          }
-          throw new Error(data.error || "Failed to load file summary.");
-        }
-        const data = await res.json();
-        window.dispatchEvent(new CustomEvent("usage-updated"));
-        const next = {
-          code: data.code as string,
-          summary: typeof data.summary === "string" ? data.summary : String(data.summary || ""),
-          mermaid: (data.mermaid ?? null) as string | null,
-        };
-        setEditorValue(next.code);
-        setSummary(next.summary);
-        setMermaid(next.mermaid);
-        setCache((prev) => {
-          const newCache = { ...prev };
-          if (selectedPath) {
-            newCache[selectedPath] = next;
-          }
-          return newCache;
-        });
-        setError(null);
-        if (selectedPath) {
+          if (controller.signal.aborted) return;
+          
+          // Truncate if too long (same as API does)
+          const codePayload: string =
+            fileContent.length > 16000
+              ? `${fileContent.slice(0, 16000)}\n// … truncated`
+              : fileContent;
+          
+          setEditorValue(codePayload);
           setCurrentFile({
             path: selectedPath,
-            content: next.code,
+            content: codePayload,
             language: selectedPath.split(".").pop() || undefined,
           });
-        } 
-      } catch (err: unknown) {
-        if (controller.signal.aborted) return;
-        const message =
-          err instanceof Error ? err.message : "Unexpected error loading file.";
-        setError(message);
-      } finally {
-        if (!controller.signal.aborted) {
+          setSummary('Click "Generate AI Insight" to analyze this file.');
+          setError(null);
           setLoading(false);
+        })
+        .catch((err) => {
+          if (controller.signal.aborted) return;
+          const errorMessage = err instanceof Error ? err.message : "Failed to load file content.";
+          setError(errorMessage);
+          setLoading(false);
+          setEditorValue(defaultEditorValue);
+          setCurrentFile(null);
+          setSummary('Click "Generate AI Insight" to analyze this file.');
+        })
+        .finally(() => {
+          if (activeFileFetch.current === controller) {
+            activeFileFetch.current = null;
+          }
+        });
+    } else {
+      setSummary('Click "Generate AI Insight" to analyze this file.');
+      setMermaid(null);
+      setError(null);
+      setLoading(false);
+      setCurrentFile(null);
+      setEditorValue(defaultEditorValue);
+    }
+  }, [cache, defaultEditorValue, selectedPath, setCurrentFile, owner, name]);
+
+  const handleGenerateSummary = useCallback(async () => {
+    if (!selectedPath || !owner || !name) return;
+
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/file-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          owner,
+          name,
+          path: selectedPath,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+
+        if (res.status === 429) {
+          const retryAfter = data.retryAfter || 60;
+          throw new Error(
+            `Rate limit exceeded. Gemini Flash free tier allows ~1500 requests/day. ` +
+              `Please wait ${retryAfter} seconds or try again later.`,
+          );
         }
+        throw new Error(data.error || "Failed to load file summary.");
+      }
+
+      const data = await res.json();
+      window.dispatchEvent(new CustomEvent("usage-updated"));
+
+      // --- 2. APPLY SANITIZER HERE ---
+      const cleanMermaid = cleanMermaidCode((data.mermaid ?? null) as string | null);
+
+      const next = {
+        code: data.code as string,
+        summary: typeof data.summary === "string" ? data.summary : String(data.summary || ""),
+        mermaid: cleanMermaid, // Use cleaned version
+      };
+      
+      setEditorValue(next.code);
+      setSummary(next.summary);
+      setMermaid(next.mermaid);
+      setCache((prev) => {
+        const newCache = { ...prev };
+        if (selectedPath) {
+          newCache[selectedPath] = next;
+        }
+        return newCache;
+      });
+      setError(null);
+      setCurrentFile({
+        path: selectedPath,
+        content: next.code,
+        language: selectedPath.split(".").pop() || undefined,
+      });
+    } catch (err: unknown) {
+      if (controller.signal.aborted) return;
+      const message = err instanceof Error ? err.message : "Unexpected error loading file.";
+      setError(message);
+    } finally {
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+      }
+      if (!controller.signal.aborted) {
+        setLoading(false);
       }
     }
-
-    load();
-
-    return () => controller.abort();
-    
-  }, [owner, name, selectedPath]);
+  }, [name, owner, selectedPath, setCurrentFile]);
 
   return (
     <main className="flex h-screen flex-col overflow-hidden">
@@ -571,18 +669,14 @@ export function DeepDiveExplorer() {
                         <button
                           onClick={() => {
                             setError(null);
-                            
                             setCache((prev) => {
-                              const newCache = { ...prev };
+                              const next = { ...prev };
                               if (selectedPath) {
-                                delete newCache[selectedPath];
+                                delete next[selectedPath];
                               }
-                              return newCache;
+                              return next;
                             });
-                            
-                            const currentPath = selectedPath;
-                            setSelectedPath(null);
-                            setTimeout(() => setSelectedPath(currentPath), 10);
+                            void handleGenerateSummary();
                           }}
                           className="text-[10px] px-2 py-0.5 rounded border border-rose-400/50 hover:bg-rose-500/20 transition-colors"
                         >
@@ -592,14 +686,27 @@ export function DeepDiveExplorer() {
                       <p className="text-[10px] text-rose-400 whitespace-pre-wrap">{error}</p>
                       {error.includes("rate limit") && (
                         <p className="text-[10px] text-rose-300/70 mt-2 italic">
-                          Note: The free tier limit is per API key. If you changed your API key, the new key may also be on the free tier with the same 20 requests/day limit.
+                          Note: The free tier limit is per API key. If you changed your API key, the new key may also be on a restricted quota tier.
                         </p>
                       )}
                     </div>
                   ) : (
-                    <ReactMarkdown>
-                      {typeof summary === "string" ? summary : String(summary || "")}
-                    </ReactMarkdown>
+                    <>
+                      {showGenerateCta && (
+                        <button
+                          type="button"
+                          onClick={() => handleGenerateSummary()}
+                          disabled={!canGenerate}
+                          className="mb-2 inline-flex items-center gap-1 rounded border border-sky-500/40 bg-sky-500/10 px-2 py-1 text-[10px] font-medium text-sky-100 transition-colors hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Sparkles className="h-3 w-3" />
+                          Generate AI Insight
+                        </button>
+                      )}
+                      <ReactMarkdown>
+                        {typeof summary === "string" ? summary : String(summary || "")}
+                      </ReactMarkdown>
+                    </>
                   )}
                 </div>
               </motion.div>
@@ -645,10 +752,16 @@ export function DeepDiveExplorer() {
                   ) : selectedPath ? (
                     <div className="flex h-full items-center justify-center text-[11px] text-slate-400">
                       <div className="text-center">
-                        <p>No diagram available for this file.</p>
-                        <p className="text-[10px] text-slate-500 mt-1">
-                          Gemini did not generate a diagram for this file.
+                        <p>
+                          {showGenerateCta
+                            ? 'Click "Generate AI Insight" to request a diagram for this file.'
+                            : "No diagram available for this file."}
                         </p>
+                        {!showGenerateCta && (
+                          <p className="text-[10px] text-slate-500 mt-1">
+                            Gemini did not generate a diagram for this file.
+                          </p>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -730,5 +843,3 @@ export function DeepDiveExplorer() {
     </main>
   );
 }
-
-

@@ -6,6 +6,7 @@ import { authConfig } from "@/lib/auth";
 import { getCachedDiagram, setCachedDiagram, type DiagramPayload } from "@/lib/diagramCache";
 import { fetchDiagram, saveDiagram } from "@/lib/diagramStore";
 import { checkAndRecordUsage, estimateTokens, recordActualUsage } from "@/lib/tokenUsage";
+import { cleanMermaidCode } from "@/lib/utils/mermaid-cleaner";
 
 export async function POST(request: NextRequest) {
   try {
@@ -94,23 +95,21 @@ export async function POST(request: NextRequest) {
       '6) "dependencies": An array of 5-8 strings listing the most important npm/pip/etc dependencies.',
       "",
       '7) "mermaidArchitecture": A Mermaid diagram (flowchart or graph) showing the high-level architecture.',
-      "   - Use valid Mermaid syntax ONLY - no markdown, no code fences, no JSON escaping",
-      "   - MUST start with diagram type: 'flowchart TD' or 'graph LR'",
-      "   - Show main components, modules, and their relationships",
-      "   - Keep it clear: 8-12 nodes max",
-      "   - ALWAYS quote ALL node labels that contain spaces, hyphens, or special characters",
-      "   - Example: flowchart TD\n    A[\"User\"] --> B[\"Next.js App\"]",
-      "   - Ensure every opening bracket [ has a closing bracket ]",
-      "   - Ensure every opening quote \" has a closing quote \"",
-      "   - Do NOT include trailing semicolons",
+      "   - Direction: graph TD (top-down).",
+      "   - Node IDs: SINGLE WORDS (alphanumeric, no spaces). Example: AuthService (NOT \"Auth Service\").",
+      '   - Labels: Always quoted. Example: A["User Login"] --> B["Auth API"].',
+      "   - Use valid Mermaid syntax ONLY - no markdown, no code fences, no JSON escaping, no prose.",
+      "   - Keep it clear: 8-12 nodes max.",
+      "   - Ensure every [ has a matching ], every quote is closed, and no trailing semicolons.",
       "",
       '8) "mermaidDataFlow": A Mermaid sequenceDiagram or flowchart showing data flow through the system.',
-      "   - Use valid Mermaid syntax ONLY - no markdown, no code fences, no JSON escaping",
-      "   - For sequenceDiagram: show key interactions",
-      "   - For flowchart: show data transformation steps",
-      "   - Keep it clear: 6-10 steps max",
-      "   - ALWAYS quote ALL labels with spaces or special characters",
-      "   - Ensure all quotes and brackets are properly closed",
+      "   - If flowchart: still graph TD.",
+      "   - Node IDs: SINGLE WORDS (alphanumeric, no spaces).",
+      '   - Labels: Always quoted. Example: A["API"] --> B["DB"].',
+      "   - Use valid Mermaid syntax ONLY - no markdown, no code fences, no JSON escaping, no prose.",
+      "   - Keep it clear: 6-10 steps max.",
+      "   - Ensure all quotes and brackets are properly closed; no trailing semicolons.",
+      "   - For the mermaidDataFlow diagram, every Mermaid participant and arrow definition MUST be on its own line. Do NOT combine multiple participants or arrows on a single line.",
       "",
       "Repository information:",
       `- Owner: ${owner}`,
@@ -208,20 +207,6 @@ export async function POST(request: NextRequest) {
       const end = completion.content.lastIndexOf("}");
       const jsonSlice = completion.content.slice(start, end + 1);
       parsed = JSON.parse(jsonSlice);
-      
-      if (parsed.mermaidArchitecture) {
-        parsed.mermaidArchitecture = parsed.mermaidArchitecture
-          .replace(/^```[a-zA-Z]*\s*/, "")
-          .replace(/```$/gm, "")
-          .trim();
-      }
-      
-      if (parsed.mermaidDataFlow) {
-        parsed.mermaidDataFlow = parsed.mermaidDataFlow
-          .replace(/^```[a-zA-Z]*\s*/, "")
-          .replace(/```$/gm, "")
-          .trim();
-      }
     } catch {
       
       parsed = {
@@ -242,7 +227,15 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    
+    // Always sanitize Mermaid diagrams before caching/returning
+    if (parsed.mermaidArchitecture) {
+      parsed.mermaidArchitecture = cleanMermaidCode(parsed.mermaidArchitecture);
+    }
+
+    if (parsed.mermaidDataFlow) {
+      parsed.mermaidDataFlow = cleanMermaidCode(parsed.mermaidDataFlow);
+    }
+
     setCachedDiagram(cacheKey, parsed);
     await saveDiagram(userId, owner, name, parsed);
 

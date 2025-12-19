@@ -1,7 +1,7 @@
 export const config = {
   gemini: {
     apiKey: process.env.GEMINI_API_KEY,
-    model: process.env.GEMINI_MODEL ?? "gemini-1.5-pro",
+    model: process.env.GEMINI_MODEL ?? "models/gemini-1.5-flash-002",
   },
   github: {
     clientId: process.env.GITHUB_CLIENT_ID,

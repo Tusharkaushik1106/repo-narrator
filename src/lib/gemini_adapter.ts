@@ -1,14 +1,20 @@
+
 import { randomUUID } from "crypto";
 import { GoogleGenerativeAI, type GenerativeModel } from "@google/generative-ai";
 import type {
   LLMModelConfig,
   LLMResponseChunk,
-  NarrationContext,
   NarrationMessage,
 } from "./types";
 import type { LLMAdapter } from "./llm_adapter";
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+// ✅ DEFAULT to the active 2.5 model
+const DEFAULT_MODEL = "models/gemini-2.5-flash";
+
+function normalizeModelName(name: string): string {
+  // Simple normalization: just ensure 'models/' prefix
+  return name.startsWith("models/") ? name : `models/${name}`;
+}
 
 function createClient(config?: Partial<LLMModelConfig>): GenerativeModel {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -18,11 +24,50 @@ function createClient(config?: Partial<LLMModelConfig>): GenerativeModel {
 
   const client = new GoogleGenerativeAI(apiKey);
 
-  const modelName = config?.model ?? process.env.GEMINI_MODEL ?? DEFAULT_MODEL;
+  const requestedModel = config?.model ?? process.env.GEMINI_MODEL ?? DEFAULT_MODEL;
+  const modelName = normalizeModelName(requestedModel);
+
+  const generationConfig =
+    typeof config?.maxTokens === "number"
+      ? { maxOutputTokens: config.maxTokens }
+      : undefined;
 
   return client.getGenerativeModel({
     model: modelName,
+    generationConfig,
   });
+}
+
+// ✅ CRITICAL: The Retry Logic to handle "503 Overloaded" errors
+async function generateWithRetry(
+  model: GenerativeModel, 
+  prompt: string, 
+  streaming: boolean,
+  retries = 3, 
+  delay = 1000
+): Promise<any> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      if (streaming) {
+        return await model.generateContentStream(prompt);
+      }
+      return await model.generateContent(prompt);
+    } catch (error: any) {
+      // Check for 503 (Overloaded) or 429 (Rate Limit)
+      const isOverloaded = error.message?.includes('503') || error.status === 503;
+      const isRateLimited = error.message?.includes('429') || error.status === 429;
+
+      if (isOverloaded || isRateLimited) {
+        if (i === retries - 1) throw error; // Give up on last try
+        
+        console.warn(`Gemini API busy (Attempt ${i + 1}/${retries}). Retrying in ${delay}ms...`);
+        await new Promise(res => setTimeout(res, delay));
+        delay *= 2; // Exponential backoff (1s -> 2s -> 4s)
+        continue;
+      }
+      throw error; // Throw other errors immediately
+    }
+  }
 }
 
 export const geminiAdapter: LLMAdapter = {
@@ -50,51 +95,30 @@ export const geminiAdapter: LLMAdapter = {
 
     const streaming = config?.streaming ?? true;
 
-    if (!streaming || !onChunk) {
-      try {
-        const result = await model.generateContent(prompt);
+    try {
+      if (!streaming || !onChunk) {
+        // Non-streaming Mode with Retry
+        const result = await generateWithRetry(model, prompt, false);
         const text = result.response.text();
-        const finalMessage: NarrationMessage = {
+        return {
           id: randomUUID(),
           role: "assistant",
           content: text,
           createdAt: new Date().toISOString(),
         };
-        return finalMessage;
-      } catch (error: unknown) {
-        const isRateLimit = 
-          (error && typeof error === "object" && "status" in error && error.status === 429) ||
-          (error instanceof Error && (
-            error.message.includes("429") || 
-            error.message.includes("quota") || 
-            error.message.includes("rate limit") ||
-            error.message.includes("Too Many Requests")
-          ));
-        
-        if (isRateLimit) {
-          throw new Error(
-            "Gemini API rate limit exceeded. The free tier allows 20 requests per day. " +
-            "Please wait ~60 seconds and try again, or upgrade your API plan. " +
-            "See https://ai.google.dev/gemini-api/docs/rate-limits for more info."
-          );
-        }
-        throw error;
       }
-    }
 
-    try {
-      const streamingResult = await model.generateContentStream(prompt);
-
+      // Streaming Mode with Retry
+      const streamingResult = await generateWithRetry(model, prompt, true);
       let fullText = "";
 
       for await (const chunk of streamingResult.stream) {
         const chunkText = chunk.text();
         fullText += chunkText;
-        const responseChunk: LLMResponseChunk = {
+        onChunk({
           text: chunkText,
           done: false,
-        };
-        onChunk(responseChunk);
+        });
       }
 
       onChunk({
@@ -102,34 +126,28 @@ export const geminiAdapter: LLMAdapter = {
         done: true,
       });
 
-      const finalMessage: NarrationMessage = {
+      return {
         id: randomUUID(),
         role: "assistant",
         content: fullText,
         createdAt: new Date().toISOString(),
       };
 
-      return finalMessage;
     } catch (error: unknown) {
-      const isRateLimit = 
-        (error && typeof error === "object" && "status" in error && error.status === 429) ||
-        (error instanceof Error && (
-          error.message.includes("429") || 
-          error.message.includes("quota") || 
-          error.message.includes("rate limit") ||
-          error.message.includes("Too Many Requests")
-        ));
+      const errorMessage = error instanceof Error ? error.message : String(error);
       
-      if (isRateLimit) {
-        throw new Error(
-          "Gemini API rate limit exceeded. The free tier allows 20 requests per day. " +
-          "Please wait ~60 seconds and try again, or upgrade your API plan. " +
-          "See https://ai.google.dev/gemini-api/docs/rate-limits for more info."
-        );
+      // Detailed error messages for the UI
+      if (errorMessage.includes("404")) {
+         throw new Error("Model not found. Please check GEMINI_MODEL in .env is set to 'gemini-2.5-flash'.");
+      }
+      if (errorMessage.includes("503")) {
+        throw new Error("Gemini is currently overloaded. Please try again in a moment.");
+      }
+      if (errorMessage.includes("429")) {
+        throw new Error("Rate limit exceeded. Please wait a moment.");
       }
       throw error;
     }
   },
 };
-
 

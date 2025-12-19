@@ -1,11 +1,9 @@
 import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authConfig } from "@/lib/auth";
-import { geminiAdapter } from "@/lib/gemini_adapter";
-import type { NarrationMessage } from "@/lib/types";
 import { fetchRepoTree, fetchRawFile } from "@/lib/github";
 import { inMemoryVectorStoreAdapter } from "@/lib/vector_store_adapter";
-import { checkAndRecordUsage, estimateTokens, recordActualUsage } from "@/lib/tokenUsage";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const runtime = "nodejs";
 
@@ -31,6 +29,167 @@ function parseGitHubUrl(url: string): { owner: string; name: string } | null {
     return { owner, name };
   } catch {
     return null;
+  }
+}
+
+type StackSubject = "Frontend" | "Backend" | "Auth" | "Infra" | "DX";
+
+function calculateRepoStats(
+  entries: Array<{ path: string; type?: string; size?: number }>,
+): {
+  stackRadar: { subject: StackSubject; value: number }[];
+  hotspots: { path: string; complexity: number }[];
+} {
+  const fileEntries = entries.filter((entry) => entry.type !== "tree");
+  const subjectScores: Record<StackSubject, number> = {
+    Frontend: 0,
+    Backend: 0,
+    Auth: 0,
+    Infra: 0,
+    DX: 0,
+  };
+
+  for (const entry of fileEntries) {
+    const lowerPath = entry.path.toLowerCase();
+    const ext = lowerPath.split(".").pop() ?? "";
+    const matchedSubjects = new Set<StackSubject>();
+
+    if (["ts", "tsx", "js", "jsx", "css", "scss", "sass", "less", "html", "mdx"].includes(ext)) {
+      matchedSubjects.add("Frontend");
+    }
+    if (["ts", "js", "py", "go", "rb", "java", "cs", "rs", "php", "kt", "swift", "c", "cpp"].includes(ext)) {
+      matchedSubjects.add("Backend");
+    }
+    if (
+      lowerPath.includes("auth") ||
+      lowerPath.includes("oauth") ||
+      lowerPath.includes("session") ||
+      lowerPath.includes("jwt")
+    ) {
+      matchedSubjects.add("Auth");
+    }
+    if (
+      ["dockerfile", "docker", "yml", "yaml", "tf", "ini", "toml", "sh", "ps1", "sql"].includes(ext) ||
+      lowerPath.includes("infra") ||
+      lowerPath.includes("deploy") ||
+      lowerPath.includes("ops") ||
+      lowerPath.includes("k8s")
+    ) {
+      matchedSubjects.add("Infra");
+    }
+    if (["md", "mdx", "json", "lock", "config"].includes(ext) || lowerPath.includes("docs")) {
+      matchedSubjects.add("DX");
+    }
+
+    if (matchedSubjects.size === 0) {
+      matchedSubjects.add("DX");
+    }
+
+    const weight = 1 / matchedSubjects.size;
+    matchedSubjects.forEach((subject) => {
+      subjectScores[subject] += weight;
+    });
+  }
+
+  const totalWeight = Math.max(1, fileEntries.length);
+  const stackRadar = (["Frontend", "Backend", "Auth", "Infra", "DX"] as StackSubject[]).map(
+    (subject) => ({
+      subject,
+      value: Math.min(100, Math.round((subjectScores[subject] / totalWeight) * 100)),
+    }),
+  );
+
+  const sortedBySize = [...fileEntries].sort((a, b) => (b.size ?? 0) - (a.size ?? 0));
+  const maxSize = sortedBySize.length > 0 ? Math.max(...sortedBySize.map((entry) => entry.size ?? 0)) : 0;
+  const hotspots = sortedBySize.slice(0, 5).map((entry) => ({
+    path: entry.path,
+    complexity: maxSize > 0 ? Math.round(40 + (60 * (entry.size ?? 0)) / maxSize) : 50,
+  }));
+
+  return { stackRadar, hotspots };
+}
+
+async function buildElevatorPitch(
+  repo: GitHubRepo,
+  readme: string,
+  fileTree: Array<{ path: string; type?: string }>,
+  sampleCode?: string | null,
+): Promise<string> {
+  // Fallback to simple version if Gemini API key is not configured
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    const description = repo.description?.trim();
+    const readmeLine = readme.split("\n").find((line) => line.trim().length > 0);
+    const primaryLang = repo.language ? `Primary language: ${repo.language}.` : "";
+    const repoStats = `Stars: ${repo.stargazers_count}, forks: ${repo.forks_count}.`;
+    const lead = description || readmeLine || `Codebase for ${repo.full_name}.`;
+    return [lead, primaryLang, repoStats].filter(Boolean).join(" ");
+  }
+
+  try {
+    const client = new GoogleGenerativeAI(apiKey);
+    const model = client.getGenerativeModel({
+      model: process.env.GEMINI_MODEL || "models/gemini-2.5-flash",
+      generationConfig: {
+        maxOutputTokens: 800,
+        temperature: 0.7,
+      },
+    });
+
+    // Build file structure summary
+    const fileTreeSummary = fileTree
+      .slice(0, 30)
+      .filter((f) => f.type !== "tree")
+      .map((f) => f.path)
+      .join(", ");
+
+    const prompt = [
+      "You are gitlore, an expert software explainer. Generate a detailed, comprehensive elevator pitch for this repository.",
+      "",
+      "Write a 2-3 paragraph summary (approximately 200-300 words) that includes:",
+      "- What the project does and its main purpose",
+      "- Key features, capabilities, and what makes it unique",
+      "- Technology stack and primary programming language",
+      "- Target audience or use cases",
+      "- Notable aspects like architecture patterns, design decisions, or special features",
+      "",
+      "Be specific, informative, and engaging. Use the repository information provided below.",
+      "",
+      "Repository information:",
+      `- Name: ${repo.full_name}`,
+      repo.description ? `- Description: ${repo.description}` : "",
+      repo.language ? `- Primary language: ${repo.language}` : "",
+      `- Stars: ${repo.stargazers_count}, Forks: ${repo.forks_count}`,
+      "",
+      fileTreeSummary ? `File structure (sample): ${fileTreeSummary}` : "",
+      "",
+      readme && readme !== "[no readme]" ? `README excerpt:\n${readme.slice(0, 1000)}` : "",
+      "",
+      sampleCode ? `Sample code:\n${sampleCode.slice(0, 1500)}` : "",
+      "",
+      "Generate ONLY the elevator pitch text. Do not include headers, titles, or markdown formatting. Write in a clear, professional tone.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    
+    // Clean up the response and add basic stats
+    const cleanedText = text.trim();
+    const primaryLang = repo.language ? `Primary language: ${repo.language}.` : "";
+    const repoStats = `Stars: ${repo.stargazers_count}, forks: ${repo.forks_count}.`;
+    
+    return `${cleanedText} ${primaryLang} ${repoStats}`.trim();
+  } catch (error) {
+    // Fallback to simple version on error
+    console.warn("Failed to generate AI elevator pitch, using fallback:", error);
+    const description = repo.description?.trim();
+    const readmeLine = readme.split("\n").find((line) => line.trim().length > 0);
+    const primaryLang = repo.language ? `Primary language: ${repo.language}.` : "";
+    const repoStats = `Stars: ${repo.stargazers_count}, forks: ${repo.forks_count}.`;
+    const lead = description || readmeLine || `Codebase for ${repo.full_name}.`;
+    return [lead, primaryLang, repoStats].filter(Boolean).join(" ");
   }
 }
 
@@ -103,116 +262,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const contextPieces = [
-      `Full name: ${repo.full_name}`,
-      repo.description ? `Description: ${repo.description}` : "",
-      `Stars: ${repo.stargazers_count}`,
-      `Forks: ${repo.forks_count}`,
-      `Open issues: ${repo.open_issues_count}`,
-      repo.language ? `Primary language: ${repo.language}` : "",
-    ]
-      .filter(Boolean)
-      .join("\\n");
-
     const optimizedReadme = readme ? readme.slice(0, 1500) : "[no readme]";
-    
-    const prompt = [
-      "Analyze repo and return JSON:",
-      '{ "elevatorPitch": "2-4 sentences", "stackRadar": [{"subject": "Frontend|Backend|Auth|Infra|DX", "value": 0-100}] }',
-      `Metadata: ${contextPieces}`,
-      `README: ${optimizedReadme}`,
-    ].join("\n");
 
-    const messages: NarrationMessage[] = [
-      {
-        id: "system",
-        role: "user",
-        content: prompt,
-        createdAt: new Date().toISOString(),
-      },
-    ];
-
-  const estimatedInputTokens = estimateTokens(prompt);
-  const estimatedTokens = estimatedInputTokens + 2000;
-  const usageCheck = await checkAndRecordUsage(userId, estimatedTokens);
-  if (!usageCheck.allowed) {
-    return Response.json(
-      {
-        error: usageCheck.reason || "Usage limit exceeded",
-        retryAfter: usageCheck.retryAfter,
-      },
-      { status: 429 }
-    );
-  }
-
-  let completion;
-  try {
-    completion = await geminiAdapter.chat({
-      messages,
-      config: { streaming: false },
-      });
-      
-    const actualResponseTokens = estimateTokens(completion.content);
-    const actualTotalTokens = estimatedInputTokens + actualResponseTokens;
-    const tokenDifference = actualTotalTokens - estimatedTokens;
-    if (tokenDifference !== 0) {
-      await recordActualUsage(userId, tokenDifference);
-    }
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    
-    const isRateLimit = 
-      (error && typeof error === "object" && "status" in error && error.status === 429) ||
-      errorMessage.includes("rate limit") || 
-      errorMessage.includes("quota") ||
-      errorMessage.includes("429") ||
-      errorMessage.includes("Too Many Requests");
-    
-    if (isRateLimit) {
-      return Response.json(
-        {
-          error: errorMessage,
-          retryAfter: 60, 
-        },
-        { status: 429 },
-      );
-    }
-    return Response.json(
-      {
-        error: errorMessage || "Failed to generate analysis from Gemini API.",
-      },
-      { status: 500 },
-    );
-    }
-
-    let parsedJson:
-      | {
-          elevatorPitch: string;
-          stackRadar: { subject: string; value: number }[];
-        }
-      | undefined;
-
-    try {
-      const start = completion.content.indexOf("{");
-      const end = completion.content.lastIndexOf("}");
-      const jsonSlice = completion.content.slice(start, end + 1);
-      parsedJson = JSON.parse(jsonSlice);
-    } catch {
-      parsedJson = {
-        elevatorPitch:
-          "gitlore could not parse a structured response from Gemini, but this repository appears to be a typical GitHub project.",
-        stackRadar: [
-          { subject: "Frontend", value: 60 },
-          { subject: "Backend", value: 60 },
-          { subject: "Auth", value: 40 },
-          { subject: "Infra", value: 40 },
-          { subject: "DX", value: 60 },
-        ],
-      };
-    }
-
-    
     const tree = await fetchRepoTree(owner, name);
+    const { stackRadar, hotspots } = calculateRepoStats(tree);
 
     const codeEntries = tree.filter(
       (entry) =>
@@ -234,6 +287,12 @@ export async function POST(req: NextRequest) {
     }[] = [];
 
     const fileSizes: Record<string, number> = {};
+    for (const entry of tree) {
+      if (entry.type === "blob") {
+        fileSizes[entry.path] = entry.size ?? 0;
+      }
+    }
+
     let firstFileContent: string | null = null;
 
     for (const entry of limited) {
@@ -268,15 +327,6 @@ export async function POST(req: NextRequest) {
       sizeEntries.length > 0
         ? Math.max(...sizeEntries.map(([, size]) => size))
         : 0;
-
-    const hotspots = sizeEntries
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([path, size]) => ({
-        path,
-        complexity:
-          maxSize > 0 ? Math.round(40 + (60 * size) / maxSize) : 50,
-      }));
 
     
     const allEntries = tree.map((entry) => {
@@ -348,13 +398,21 @@ export async function POST(req: NextRequest) {
       readme ||
       `// Sample view for ${repo.full_name}\n// Connect this Monaco editor to real code snippets during indexing.\n`;
 
+    // Generate detailed elevator pitch using AI
+    const elevatorPitch = await buildElevatorPitch(
+      repo,
+      optimizedReadme,
+      tree,
+      sampleCode,
+    );
+
     return Response.json({
       repoId,
       repoUrl,
       owner,
       name,
-      elevatorPitch: parsedJson?.elevatorPitch ?? "",
-      stackRadar: parsedJson?.stackRadar ?? [],
+      elevatorPitch,
+      stackRadar,
       hotspots,
       sampleFileTree,
       fullFileTree: allEntries, 
@@ -363,23 +421,6 @@ export async function POST(req: NextRequest) {
   } catch (error: unknown) {
     
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const isRateLimit = 
-      (error && typeof error === "object" && "status" in error && error.status === 429) ||
-      errorMessage.includes("rate limit") || 
-      errorMessage.includes("quota") ||
-      errorMessage.includes("429") ||
-      errorMessage.includes("Too Many Requests");
-    
-    if (isRateLimit) {
-      return Response.json(
-        {
-          error: errorMessage || "Gemini API rate limit exceeded. The free tier allows 20 requests per day.",
-          retryAfter: 60,
-        },
-        { status: 429 },
-      );
-    }
-    
     console.error("Error in /api/analyze:", error);
     return Response.json(
       {

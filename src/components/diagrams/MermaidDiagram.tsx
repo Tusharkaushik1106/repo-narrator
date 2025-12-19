@@ -15,6 +15,7 @@ mermaid.initialize({
 interface MermaidDiagramProps {
   code: string;
   id?: string;
+  onError?: (message: string) => void;
 }
 
 function sanitizeMermaidCode(code: string): string {
@@ -248,11 +249,12 @@ function createFallbackDiagram(code: string): string {
   return `flowchart TD\n${nodeDefs}`;
 }
 
-export function MermaidDiagram({ code, id = "mermaid-diagram" }: MermaidDiagramProps) {
+export function MermaidDiagram({ code, id = "mermaid-diagram", onError }: MermaidDiagramProps) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [isRendering, setIsRendering] = useState(true);
   const renderedCodeRef = useRef<string>("");
   const isRenderingRef = useRef(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -269,6 +271,7 @@ export function MermaidDiagram({ code, id = "mermaid-diagram" }: MermaidDiagramP
     }
 
     setIsRendering(true);
+    setErrorMessage(null);
     isRenderingRef.current = true;
     
     const render = async () => {
@@ -286,6 +289,17 @@ export function MermaidDiagram({ code, id = "mermaid-diagram" }: MermaidDiagramP
         
         if (!cleaned || cleaned.trim().length === 0) {
           throw new Error("Empty diagram after sanitization");
+        }
+
+        // Pre-parse to catch syntax errors before render to avoid noisy console errors.
+        try {
+          await mermaid.parse(cleaned);
+        } catch (parseErr) {
+          throw new Error(
+            parseErr instanceof Error && parseErr.message
+              ? `Mermaid parse error: ${parseErr.message}`
+              : "Mermaid parse error",
+          );
         }
         
         const uniqueId = `${id}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -305,8 +319,12 @@ export function MermaidDiagram({ code, id = "mermaid-diagram" }: MermaidDiagramP
           renderedCodeRef.current = code.trim();
         }
       } catch (error) {
+        // First fallback: try to build a safe minimal diagram and render it.
         try {
-          const fallback = createFallbackDiagram(code);
+          const fallback = createFallbackDiagram(cleaned || code);
+
+          await mermaid.parse(fallback);
+
           const uniqueId = `${id}-fallback-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
           const { svg } = await mermaid.render(uniqueId, fallback);
           
@@ -317,7 +335,13 @@ export function MermaidDiagram({ code, id = "mermaid-diagram" }: MermaidDiagramP
               svgElement.style.willChange = "transform";
               svgElement.style.transform = "translateZ(0)";
             }
-            renderedCodeRef.current = code.trim();
+            renderedCodeRef.current = fallback.trim();
+            const message =
+              error instanceof Error && error.message
+                ? `Diagram simplified due to syntax issues: ${error.message}`
+                : "Diagram simplified due to syntax issues.";
+            setErrorMessage(message);
+            onError?.(message);
           }
         } catch (fallbackError) {
           if (ref.current && isRenderingRef.current) {
@@ -330,7 +354,7 @@ export function MermaidDiagram({ code, id = "mermaid-diagram" }: MermaidDiagramP
             
             const errorHtml = `
               <div class="p-3 rounded-lg border border-amber-500/30 bg-amber-950/20">
-                <p class="text-xs text-amber-400 font-medium mb-2">Diagram simplified due to syntax issues</p>
+                <p class="text-xs text-amber-400 font-medium mb-2">Diagram failed to render</p>
                 <details class="text-xs">
                   <summary class="text-slate-400 cursor-pointer hover:text-slate-300 mb-1">View original code</summary>
                   <pre class="mt-2 p-2 bg-slate-900/50 rounded text-slate-300 text-[10px] overflow-auto max-h-32 whitespace-pre-wrap">${escapedCode}</pre>
@@ -339,6 +363,13 @@ export function MermaidDiagram({ code, id = "mermaid-diagram" }: MermaidDiagramP
             `;
             ref.current.innerHTML = errorHtml;
           }
+
+          const message =
+            fallbackError instanceof Error && fallbackError.message
+              ? fallbackError.message
+              : "Diagram failed to render.";
+          setErrorMessage(message);
+          onError?.(message);
         }
         
         if (process.env.NODE_ENV === "development") {
@@ -359,16 +390,22 @@ export function MermaidDiagram({ code, id = "mermaid-diagram" }: MermaidDiagramP
   }, [code, id]);
 
   return (
-    <div
-      ref={ref}
-      className="w-full text-slate-100"
-      style={{
-        willChange: "transform",
-        transform: "translateZ(0)",
-        backfaceVisibility: "hidden",
-        WebkitBackfaceVisibility: "hidden",
-        perspective: "1000px",
-      }}
-    />
+    <div className="w-full text-slate-100 space-y-1">
+      {errorMessage && (
+        <p className="text-[11px] text-amber-400">
+          {errorMessage}
+        </p>
+      )}
+      <div
+        ref={ref}
+        style={{
+          willChange: "transform",
+          transform: "translateZ(0)",
+          backfaceVisibility: "hidden",
+          WebkitBackfaceVisibility: "hidden",
+          perspective: "1000px",
+        }}
+      />
+    </div>
   );
 }

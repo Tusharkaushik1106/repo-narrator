@@ -5,6 +5,8 @@ import { fetchRawFile } from "@/lib/github";
 import { geminiAdapter } from "@/lib/gemini_adapter";
 import type { NarrationMessage } from "@/lib/types";
 import { checkAndRecordUsage, estimateTokens, recordActualUsage } from "@/lib/tokenUsage";
+import { createHash } from "crypto";
+import { ensureSummaryCacheTable, getDbPool } from "@/lib/db/schema";
 
 export const runtime = "nodejs";
 
@@ -40,6 +42,39 @@ export async function POST(req: NextRequest) {
         { error: "Failed to fetch file content from GitHub." },
         { status: 400 },
       );
+    }
+
+    const codePayload =
+      fileContent.length > 16000
+        ? `${fileContent.slice(0, 16000)}\n// … truncated`
+        : fileContent;
+
+    const fileHash = createHash("sha256").update(fileContent).digest("hex");
+    const pool = getDbPool();
+
+    if (pool) {
+      try {
+        await ensureSummaryCacheTable(pool);
+        const cached = await pool.query(
+          `SELECT summary_markdown, diagram_code FROM summary_cache WHERE file_hash = $1 LIMIT 1`,
+          [fileHash],
+        );
+
+        const cachedRow = cached.rows?.[0];
+        if (cachedRow) {
+          return Response.json({
+            path,
+            code: codePayload,
+            summary: cachedRow.summary_markdown ?? "",
+            mermaid: (cachedRow.diagram_code ?? "") as string,
+          });
+        }
+      } catch (cacheError) {
+        console.warn(
+          "Failed to read summary cache:",
+          cacheError instanceof Error ? cacheError.message : String(cacheError),
+        );
+      }
     }
 
     const optimizedContent = fileContent.slice(0, 2500);
@@ -100,7 +135,7 @@ export async function POST(req: NextRequest) {
       if (isRateLimit) {
         return Response.json(
           {
-            error: errorMessage || "Gemini API rate limit exceeded. The free tier allows 20 requests per day.",
+            error: errorMessage || "Gemini API rate limit exceeded. Flash free tier allows ~1500 requests per day.",
             retryAfter: 60,
           },
           { status: 429 },
@@ -140,12 +175,28 @@ export async function POST(req: NextRequest) {
       };
     }
 
+    if (pool) {
+      try {
+        await pool.query(
+          `
+          INSERT INTO summary_cache (file_hash, summary_markdown, diagram_code)
+          VALUES ($1, $2, $3)
+          ON CONFLICT (file_hash)
+          DO UPDATE SET summary_markdown = EXCLUDED.summary_markdown, diagram_code = EXCLUDED.diagram_code, updated_at = now();
+        `,
+          [fileHash, parsed.summary, parsed.mermaid ?? ""],
+        );
+      } catch (cacheError) {
+        console.warn(
+          "Failed to write summary cache:",
+          cacheError instanceof Error ? cacheError.message : String(cacheError),
+        );
+      }
+    }
+
     return Response.json({
       path,
-      code:
-        fileContent.length > 16000
-          ? `${fileContent.slice(0, 16000)}\n// … truncated`
-          : fileContent,
+      code: codePayload,
       summary: parsed.summary,
       mermaid: parsed.mermaid,
     });
@@ -162,7 +213,7 @@ export async function POST(req: NextRequest) {
     if (isRateLimit) {
       return Response.json(
         {
-          error: errorMessage || "Gemini API rate limit exceeded. The free tier allows 20 requests per day.",
+          error: errorMessage || "Gemini API rate limit exceeded. Flash free tier allows ~1500 requests per day.",
           retryAfter: 60,
         },
         { status: 429 },
