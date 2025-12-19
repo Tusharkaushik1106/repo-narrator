@@ -29,7 +29,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    
     const cacheKey = `${userId}:${owner}/${name}`;
     if (!forceRefresh) {
       const cached = getCachedDiagram(cacheKey);
@@ -199,7 +198,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    
     let parsed: DiagramPayload;
 
     try {
@@ -227,7 +225,6 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // Always sanitize Mermaid diagrams before caching/returning
     if (parsed.mermaidArchitecture) {
       parsed.mermaidArchitecture = cleanMermaidCode(parsed.mermaidArchitecture);
     }

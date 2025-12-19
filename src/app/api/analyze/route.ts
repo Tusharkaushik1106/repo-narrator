@@ -115,7 +115,6 @@ async function buildElevatorPitch(
   fileTree: Array<{ path: string; type?: string }>,
   sampleCode?: string | null,
 ): Promise<string> {
-  // Fallback to simple version if Gemini API key is not configured
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     const description = repo.description?.trim();
@@ -136,7 +135,6 @@ async function buildElevatorPitch(
       },
     });
 
-    // Build file structure summary
     const fileTreeSummary = fileTree
       .slice(0, 30)
       .filter((f) => f.type !== "tree")
@@ -175,14 +173,12 @@ async function buildElevatorPitch(
     const result = await model.generateContent(prompt);
     const text = result.response.text();
     
-    // Clean up the response and add basic stats
     const cleanedText = text.trim();
     const primaryLang = repo.language ? `Primary language: ${repo.language}.` : "";
     const repoStats = `Stars: ${repo.stargazers_count}, forks: ${repo.forks_count}.`;
     
     return `${cleanedText} ${primaryLang} ${repoStats}`.trim();
   } catch (error) {
-    // Fallback to simple version on error
     console.warn("Failed to generate AI elevator pitch, using fallback:", error);
     const description = repo.description?.trim();
     const readmeLine = readme.split("\n").find((line) => line.trim().length > 0);
@@ -247,7 +243,6 @@ export async function POST(req: NextRequest) {
 
     const repo = (await repoRes.json()) as GitHubRepo;
 
-    
     const readmeRes = await fetch(
       `https://raw.githubusercontent.com/${owner}/${name}/HEAD/README.md`,
       { headers: { "User-Agent": "gitlore" } },
@@ -311,7 +306,6 @@ export async function POST(req: NextRequest) {
           firstFileContent = text;
         }
       } catch {
-        
       }
     }
 
@@ -328,10 +322,8 @@ export async function POST(req: NextRequest) {
         ? Math.max(...sizeEntries.map(([, size]) => size))
         : 0;
 
-    
     const allEntries = tree.map((entry) => {
       if (entry.type === "tree") {
-        
         return {
           path: entry.path,
           type: "folder" as const,
@@ -339,7 +331,6 @@ export async function POST(req: NextRequest) {
           complexity: "green" as const,
         };
       } else {
-        
         const ext = entry.path.split(".").pop() ?? "";
         const language =
           ext === "tsx" || ext === "jsx"
@@ -398,7 +389,6 @@ export async function POST(req: NextRequest) {
       readme ||
       `// Sample view for ${repo.full_name}\n// Connect this Monaco editor to real code snippets during indexing.\n`;
 
-    // Generate detailed elevator pitch using AI
     const elevatorPitch = await buildElevatorPitch(
       repo,
       optimizedReadme,
@@ -419,7 +409,6 @@ export async function POST(req: NextRequest) {
       sampleCode,
     });
   } catch (error: unknown) {
-    
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("Error in /api/analyze:", error);
     return Response.json(
@@ -430,5 +419,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
 

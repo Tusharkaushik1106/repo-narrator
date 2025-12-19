@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
 :root {
-  
   --rn-bg-main: #0b0f19; 
   --rn-bg-card: #131b2c; 
   --rn-bg-overlay: rgba(19, 27, 44, 0.7);
@@ -38,7 +37,6 @@ body {
   color: var(--rn-text-primary);
   font-family: var(--font-ui), system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
-  /* Optimize scrolling performance */
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -71,7 +69,6 @@ body {
   -webkit-backdrop-filter: blur(8px);
   transform: translateZ(0);
   will-change: transform;
-  /* Optimize for scrolling */
   contain: layout style paint;
 }
 
@@ -200,7 +197,6 @@ body {
   background: rgba(15, 23, 42, 0.5);
 }
 
-/* GPU acceleration utility */
 .transform-gpu {
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
@@ -214,7 +210,6 @@ body {
 [class*="backdrop-blur"] {
   transform: translateZ(0);
   will-change: transform;
-  /* Reduce blur intensity on scroll for better performance */
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
@@ -238,7 +233,6 @@ body {
   }
 }
 
-/* Optimize all scrollable containers */
 [class*="overflow-y-auto"],
 [class*="overflow-y-scroll"],
 [class*="overflow-auto"] {

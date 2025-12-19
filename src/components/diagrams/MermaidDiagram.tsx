@@ -73,7 +73,7 @@ function sanitizeMermaidCode(code: string): string {
     const lines = cleaned.split("\n");
     const fixedLines = lines.map((line) => {
       let fixed = line.trim();
-      if (!fixed || fixed.startsWith("//")) return fixed;
+      if (!fixed) return fixed;
       
       fixed = fixed.replace(/[^\x20-\x7E\n]/g, "");
       
@@ -208,7 +208,7 @@ function sanitizeMermaidCode(code: string): string {
 }
 
 function createFallbackDiagram(code: string): string {
-  const lines = code.split("\n").filter(line => line.trim() && !line.startsWith("//"));
+  const lines = code.split("\n").filter(line => line.trim());
   
   if (lines.length === 0) {
     return 'flowchart TD\n  A["Empty Diagram"]';
@@ -291,7 +291,6 @@ export function MermaidDiagram({ code, id = "mermaid-diagram", onError }: Mermai
           throw new Error("Empty diagram after sanitization");
         }
 
-        // Pre-parse to catch syntax errors before render to avoid noisy console errors.
         try {
           await mermaid.parse(cleaned);
         } catch (parseErr) {
@@ -319,7 +318,6 @@ export function MermaidDiagram({ code, id = "mermaid-diagram", onError }: Mermai
           renderedCodeRef.current = code.trim();
         }
       } catch (error) {
-        // First fallback: try to build a safe minimal diagram and render it.
         try {
           const fallback = createFallbackDiagram(cleaned || code);
 

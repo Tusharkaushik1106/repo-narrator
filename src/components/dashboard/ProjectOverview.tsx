@@ -111,7 +111,6 @@ export function ProjectOverview() {
   return (
     <div className="h-full overflow-y-auto px-4 py-6 transform-gpu scrollbar-thin">
       <div className="mx-auto max-w-5xl space-y-6">
-        
         <motion.section
           className="glass-panel overflow-hidden p-6"
           initial={{ opacity: 0, y: 20 }}
@@ -125,7 +124,6 @@ export function ProjectOverview() {
           </div>
         </motion.section>
 
-        
         {projectAnalysis.mermaidArchitecture && (
           <motion.section
             className="glass-panel overflow-hidden p-6"
@@ -173,7 +171,6 @@ export function ProjectOverview() {
           </motion.section>
         )}
 
-        
         {projectAnalysis.keyComponents && projectAnalysis.keyComponents.length > 0 && (
           <motion.section
             className="glass-panel overflow-hidden p-6"
@@ -250,7 +247,6 @@ export function ProjectOverview() {
           </motion.section>
         )}
 
-        
         {projectAnalysis.mermaidDataFlow && (
           <motion.section
             className="glass-panel overflow-hidden p-6"
@@ -326,7 +322,6 @@ export function ProjectOverview() {
           </motion.section>
         )}
 
-        
         {projectAnalysis.dependencies && projectAnalysis.dependencies.length > 0 && (
           <motion.section
             className="glass-panel overflow-hidden p-6"

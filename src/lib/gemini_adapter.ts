@@ -8,11 +8,9 @@ import type {
 } from "./types";
 import type { LLMAdapter } from "./llm_adapter";
 
-// ✅ DEFAULT to the active 2.5 model
 const DEFAULT_MODEL = "models/gemini-2.5-flash";
 
 function normalizeModelName(name: string): string {
-  // Simple normalization: just ensure 'models/' prefix
   return name.startsWith("models/") ? name : `models/${name}`;
 }
 
@@ -38,7 +36,6 @@ function createClient(config?: Partial<LLMModelConfig>): GenerativeModel {
   });
 }
 
-// ✅ CRITICAL: The Retry Logic to handle "503 Overloaded" errors
 async function generateWithRetry(
   model: GenerativeModel, 
   prompt: string, 
@@ -53,19 +50,18 @@ async function generateWithRetry(
       }
       return await model.generateContent(prompt);
     } catch (error: any) {
-      // Check for 503 (Overloaded) or 429 (Rate Limit)
       const isOverloaded = error.message?.includes('503') || error.status === 503;
       const isRateLimited = error.message?.includes('429') || error.status === 429;
 
       if (isOverloaded || isRateLimited) {
-        if (i === retries - 1) throw error; // Give up on last try
+        if (i === retries - 1) throw error;
         
         console.warn(`Gemini API busy (Attempt ${i + 1}/${retries}). Retrying in ${delay}ms...`);
         await new Promise(res => setTimeout(res, delay));
-        delay *= 2; // Exponential backoff (1s -> 2s -> 4s)
+        delay *= 2;
         continue;
       }
-      throw error; // Throw other errors immediately
+      throw error;
     }
   }
 }
@@ -97,7 +93,6 @@ export const geminiAdapter: LLMAdapter = {
 
     try {
       if (!streaming || !onChunk) {
-        // Non-streaming Mode with Retry
         const result = await generateWithRetry(model, prompt, false);
         const text = result.response.text();
         return {
@@ -108,7 +103,6 @@ export const geminiAdapter: LLMAdapter = {
         };
       }
 
-      // Streaming Mode with Retry
       const streamingResult = await generateWithRetry(model, prompt, true);
       let fullText = "";
 
@@ -136,7 +130,6 @@ export const geminiAdapter: LLMAdapter = {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       
-      // Detailed error messages for the UI
       if (errorMessage.includes("404")) {
          throw new Error("Model not found. Please check GEMINI_MODEL in .env is set to 'gemini-2.5-flash'.");
       }

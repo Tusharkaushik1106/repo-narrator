@@ -201,7 +201,6 @@ export async function POST(req: NextRequest) {
       mermaid: parsed.mermaid,
     });
   } catch (error: unknown) {
-    
     const errorMessage = error instanceof Error ? error.message : String(error);
     const isRateLimit = 
       (error && typeof error === "object" && "status" in error && error.status === 429) ||

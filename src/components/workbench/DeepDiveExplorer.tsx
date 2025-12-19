@@ -15,23 +15,17 @@ import { ChevronRight, ChevronDown, Folder, File, Route, Zap, Sparkles } from "l
 import { AuthButton } from "@/components/auth/AuthButton";
 import Link from "next/link";
 
-// --- 1. NEW SANITIZER UTILITY ---
 function cleanMermaidCode(raw: string | null): string | null {
   if (!raw) return null;
   
-  // 1. Remove markdown code fences
   let cleaned = raw.replace(/```mermaid/g, "").replace(/```/g, "");
 
-  // 2. Fix common Gemini Flash syntax errors (missing newlines between nodes)
-  // Example fix: "Node A" --> "Node B"NodeC --> NodeD
   cleaned = cleaned.replace(/("[^"]+")([A-Za-z0-9]+)/g, '$1\n$2');
 
-  // 3. Trim whitespace
   cleaned = cleaned.trim();
 
   return cleaned;
 }
-// --------------------------------
 
 const initialNodes = [
   {
@@ -401,9 +395,7 @@ export function DeepDiveExplorer() {
       return;
     }
 
-    // If not cached, immediately fetch the file content from GitHub
     if (owner && name && selectedPath) {
-      // Abort any previous file fetch
       activeFileFetch.current?.abort();
       const controller = new AbortController();
       activeFileFetch.current = controller;
@@ -413,7 +405,6 @@ export function DeepDiveExplorer() {
       setSummary('Loading file content...');
       setMermaid(null);
       
-      // Fetch raw file content directly from GitHub
       fetch(`https://raw.githubusercontent.com/${owner}/${name}/HEAD/${selectedPath}`, {
         headers: { "User-Agent": "gitlore" },
         signal: controller.signal,
@@ -427,7 +418,6 @@ export function DeepDiveExplorer() {
           
           if (controller.signal.aborted) return;
           
-          // Truncate if too long (same as API does)
           const codePayload: string =
             fileContent.length > 16000
               ? `${fileContent.slice(0, 16000)}\n// … truncated`
@@ -504,13 +494,12 @@ export function DeepDiveExplorer() {
       const data = await res.json();
       window.dispatchEvent(new CustomEvent("usage-updated"));
 
-      // --- 2. APPLY SANITIZER HERE ---
       const cleanMermaid = cleanMermaidCode((data.mermaid ?? null) as string | null);
 
       const next = {
         code: data.code as string,
         summary: typeof data.summary === "string" ? data.summary : String(data.summary || ""),
-        mermaid: cleanMermaid, // Use cleaned version
+        mermaid: cleanMermaid,
       };
       
       setEditorValue(next.code);
