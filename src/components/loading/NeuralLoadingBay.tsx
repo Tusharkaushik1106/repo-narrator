@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useRepoContext } from "@/context/RepoContext";
 import { AlertCircle } from "lucide-react";
+import { signIn, useSession } from "next-auth/react";
 
 const steps = [
   { id: "cloning", label: "Cloning repository" },
@@ -15,8 +16,23 @@ const steps = [
 
 export function NeuralLoadingBay() {
   const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
   const { analysis, status, error, startAnalysis, finishAnalysis, failAnalysis } = useRepoContext();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  useEffect(() => {
+    if (error && (error.toLowerCase().includes("unauthorized") || error.toLowerCase().includes("401"))) {
+      const callbackUrl = "/";
+      void signIn(undefined, { callbackUrl });
+    }
+  }, [error, router]);
+
+  useEffect(() => {
+    if (sessionStatus === "unauthenticated") {
+      const callbackUrl = "/";
+      void signIn(undefined, { callbackUrl });
+    }
+  }, [sessionStatus, router]);
 
   useEffect(() => {
     if (!analysis?.repoUrl || status === "done" || status === "error") {
@@ -77,6 +93,18 @@ export function NeuralLoadingBay() {
 
   
   if (status === "error" && error) {
+    if (error.toLowerCase().includes("unauthorized") || error.toLowerCase().includes("401")) {
+      return (
+        <main className="flex min-h-dvh items-center justify-center px-4 py-10 sm:px-8 lg:px-16">
+          <div className="glass-panel relative w-full max-w-4xl px-6 py-8 sm:px-10 sm:py-10">
+            <div className="relative z-10 space-y-6 text-center">
+              <p className="text-sm text-slate-400">Redirecting to signup...</p>
+            </div>
+          </div>
+        </main>
+      );
+    }
+
     return (
       <main className="flex min-h-dvh items-center justify-center px-4 py-10 sm:px-8 lg:px-16">
         <div className="glass-panel relative w-full max-w-4xl px-6 py-8 sm:px-10 sm:py-10">

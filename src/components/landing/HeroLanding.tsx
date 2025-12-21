@@ -5,6 +5,7 @@ import { GithubIcon, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import clsx from "clsx";
+import { signIn, useSession } from "next-auth/react";
 import { useRepoContext } from "@/context/RepoContext";
 import { NeuralBackground } from "@/components/ui/neural-background";
 import { Poppins, Space_Grotesk, Playfair_Display } from "next/font/google";
@@ -32,6 +33,7 @@ const playfair = Playfair_Display({
 
 export function HeroLanding() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const { startAnalysis } = useRepoContext();
   const [input, setInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -41,8 +43,14 @@ export function HeroLanding() {
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit || submitting) return;
-    setSubmitting(true);
+    
+    if (status === "unauthenticated" || !session) {
+      const callbackUrl = "/";
+      void signIn(undefined, { callbackUrl });
+      return;
+    }
 
+    setSubmitting(true);
     startAnalysis(input.trim());
     router.push("/loading");
   };

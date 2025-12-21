@@ -242,3 +242,20 @@ body {
   contain: layout style paint;
 }
 
+@layer utilities {
+  .glass-card {
+    @apply backdrop-blur-xl bg-[#0a0a0a]/80 border border-white/10 shadow-2xl;
+    background-image: linear-gradient(to bottom right, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.2));
+  }
+  .gradient-border {
+    position: relative;
+    border-radius: 1.5rem;
+    background: linear-gradient(to bottom right, #3b82f6, #8b5cf6);
+    padding: 1px;
+  }
+  .gradient-border > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
