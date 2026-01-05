@@ -22,11 +22,33 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "Missing fileContent" }, { status: 400 });
     }
 
+    // Truncate file content to prevent token limit issues
+    const truncatedContent = fileContent.substring(0, 3000);
+
     const messages: NarrationMessage[] = [
       {
         id: "narrate-prompt",
         role: "user",
-        content: `You are an expert code narrator. Summarize this file. Use the following format strictly: <br>• <b>Purpose:</b> [One sentence]<br>• <b>Key Components:</b> [List main functions/classes]<br>• <b>Architecture:</b> [How it fits the system]. Keep it concise.\n\nFile: ${filePath || "unknown"}\n\n\`\`\`\n${fileContent}\n\`\`\``,
+        content: `You are a senior code architect. Analyze this file and return a strictly formatted JSON object.
+
+REQUIRED JSON STRUCTURE:
+{
+  "purpose": "One clear sentence explaining what this file does.",
+  "components": "List of key functions/classes/variables.",
+  "architecture": "One sentence on how this fits into the larger system."
+}
+
+RULES:
+1. Do NOT use Markdown.
+2. Do NOT write HTML tags.
+3. Keep it concise (under 20 words per section).
+4. Return ONLY valid JSON.
+5. Ensure each field is a complete sentence.
+
+File: ${filePath || "unknown"}
+
+Code:
+${truncatedContent}${fileContent.length > 3000 ? "\n[... truncated for brevity]" : ""}`,
         createdAt: new Date().toISOString(),
       },
     ];
@@ -40,17 +62,34 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const summary = completion.content;
-    console.log("AI Response:", summary);
+    const aiResponse = completion.content;
+    console.log("AI Response:", aiResponse);
 
-    return Response.json({ summary });
+    // Clean and parse JSON response
+    let cleanJson = aiResponse.replace(/```json|```/g, '').trim();
+    const firstBrace = cleanJson.indexOf('{');
+    const lastBrace = cleanJson.lastIndexOf('}');
+    
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
+    }
+
+    const data = JSON.parse(cleanJson);
+    
+    // Safety check: ensure all fields exist
+    return Response.json({
+      purpose: data.purpose || 'Analysis failed',
+      components: data.components || 'None detected',
+      architecture: data.architecture || 'Standalone utility'
+    });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("Narrate endpoint error:", errorMessage);
-    return Response.json(
-      { error: errorMessage || "Internal server error" },
-      { status: 500 }
-    );
+    return Response.json({
+      purpose: 'Error analyzing file.',
+      components: 'Check server logs.',
+      architecture: errorMessage
+    });
   }
 }
 
