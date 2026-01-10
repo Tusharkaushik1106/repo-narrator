@@ -1,8 +1,22 @@
 import { NextRequest } from "next/server";
 import { geminiAdapter } from "@/lib/gemini_adapter";
 import type { NarrationMessage } from "@/lib/types";
+import crypto from "crypto";
 
 export const runtime = "nodejs";
+
+// Simple In-Memory Cache (For Production, use Redis)
+const responseCache = new Map<string, { summary: { purpose: string; components: string; architecture: string }, timestamp: number }>();
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 Hours
+
+// Minify code by stripping comments and collapsing whitespace
+function minifyCode(code: string): string {
+  return code
+    .replace(/\/\*[\s\S]*?\*\//g, '') // Remove block comments
+    .replace(/\/\/.*/g, '')            // Remove line comments
+    .replace(/\s+/g, ' ')               // Collapse whitespace
+    .trim();
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,8 +36,24 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "Missing fileContent" }, { status: 400 });
     }
 
-    // Truncate file content to prevent token limit issues
-    const truncatedContent = fileContent.substring(0, 3000);
+    // 1. Minify Code (Saves Tokens)
+    const cleanCode = minifyCode(fileContent);
+
+    // 2. Generate Hash (Semantic ID)
+    const hash = crypto.createHash('sha256').update(cleanCode).digest('hex');
+    console.log("Code Hash:", hash.substring(0, 8) + "...");
+
+    // 3. Check Cache (Load Shedding)
+    const cached = responseCache.get(hash);
+    if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+      console.log("Cache HIT for hash:", hash.substring(0, 8) + "...");
+      return Response.json(cached.summary);
+    }
+
+    console.log("Cache MISS - calling API for hash:", hash.substring(0, 8) + "...");
+
+    // Truncate minified content to prevent token limit issues
+    const truncatedContent = cleanCode.substring(0, 4000);
 
     const messages: NarrationMessage[] = [
       {
@@ -48,7 +78,7 @@ RULES:
 File: ${filePath || "unknown"}
 
 Code:
-${truncatedContent}${fileContent.length > 3000 ? "\n[... truncated for brevity]" : ""}`,
+${truncatedContent}${cleanCode.length > 4000 ? "\n[... truncated for brevity]" : ""}`,
         createdAt: new Date().toISOString(),
       },
     ];
@@ -77,11 +107,26 @@ ${truncatedContent}${fileContent.length > 3000 ? "\n[... truncated for brevity]"
     const data = JSON.parse(cleanJson);
     
     // Safety check: ensure all fields exist
-    return Response.json({
+    const summary = {
       purpose: data.purpose || 'Analysis failed',
       components: data.components || 'None detected',
       architecture: data.architecture || 'Standalone utility'
-    });
+    };
+
+    // 4. Store in Cache
+    responseCache.set(hash, { summary, timestamp: Date.now() });
+    
+    // Cleanup old cache entries (simple LRU-like cleanup)
+    if (responseCache.size > 1000) {
+      const now = Date.now();
+      for (const [key, value] of responseCache.entries()) {
+        if (now - value.timestamp >= CACHE_TTL) {
+          responseCache.delete(key);
+        }
+      }
+    }
+
+    return Response.json(summary);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("Narrate endpoint error:", errorMessage);
