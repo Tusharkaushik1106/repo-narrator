@@ -310,10 +310,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (documents.length) {
-      await inMemoryVectorStoreAdapter.upsertDocuments({
-        repoId,
-        documents,
-      });
+      try {
+        await inMemoryVectorStoreAdapter.upsertDocuments({
+          repoId,
+          documents,
+        });
+      } catch (embeddingError) {
+        console.warn("Embeddings failed, continuing without RAG:", embeddingError);
+      }
     }
 
     const sizeEntries = Object.entries(fileSizes);

@@ -61,29 +61,33 @@ export async function POST(req: NextRequest) {
   let retrievedContext = "";
 
   if (repoId) {
-    const matches = await inMemoryVectorStoreAdapter.query({
-      repoId,
-      query: question,
-      topK: 5,
-    });
-
-    if (matches.length) {
-      retrievedContext =
-        "Relevant snippets:\n" +
-        matches
-          .slice(0, 5)
-          .map(
-            (m, idx) =>
-              `${idx + 1}. ${m.path}:${m.startLine ?? "?"}\n${(m.snippet || "").slice(0, 500)}`,
-          )
-          .join("\n\n");
-
-      messages.unshift({
-        id: "rag-context",
-        role: "assistant",
-        content: retrievedContext,
-        createdAt: new Date().toISOString(),
+    try {
+      const matches = await inMemoryVectorStoreAdapter.query({
+        repoId,
+        query: question,
+        topK: 5,
       });
+
+      if (matches.length) {
+        retrievedContext =
+          "Relevant snippets:\n" +
+          matches
+            .slice(0, 5)
+            .map(
+              (m, idx) =>
+                `${idx + 1}. ${m.path}:${m.startLine ?? "?"}\n${(m.snippet || "").slice(0, 500)}`,
+            )
+            .join("\n\n");
+
+        messages.unshift({
+          id: "rag-context",
+          role: "assistant",
+          content: retrievedContext,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    } catch (embeddingError) {
+      console.warn("RAG query failed, continuing without context:", embeddingError);
     }
   }
 
