@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "WebFetch(domain:graffico.it)",
+      "Bash(curl:*)",
+      "Bash(wc:*)",
+      "Bash(head:*)",
+      "Bash(perl -pi -e:*)",
+      "Bash(BASE=\"c:/Users/anura/OneDrive/Desktop/gitnarrator/repo-narrator/src/components/ui\")",
+      "Bash(FILES=\"$BASE/button.tsx $BASE/card.tsx $BASE/input.tsx $BASE/modal.tsx $BASE/navbar.tsx $BASE/select.tsx $BASE/form.tsx $BASE/typography.tsx $BASE/container.tsx\")",
+      "Bash(__NEW_LINE_d3bd0226f9838ebd__ grep -nH \"almond-cream\\\\|ink-black\" $FILES)",
+      "Bash(__NEW_LINE_8713079292f7ae14__ echo \"====== input.tsx ======\")",
+      "Bash(__NEW_LINE_8713079292f7ae14__ echo \"====== modal.tsx ======\")",
+      "Bash(__NEW_LINE_9277185417922eba__ echo \"====== select.tsx ======\")",
+      "Bash(__NEW_LINE_9277185417922eba__ echo \"====== form.tsx ======\")",
+      "Bash(__NEW_LINE_9277185417922eba__ echo \"====== typography.tsx ======\")",
+      "Bash(__NEW_LINE_9277185417922eba__ echo \"====== container.tsx ======\")",
+      "Bash(FILE=\"c:/Users/anura/OneDrive/Desktop/gitnarrator/repo-narrator/src/components/chat/OmniChat.tsx\")",
+      "Bash(__NEW_LINE_d4f2469e58deeadd__ echo \"\")",
+      "Bash(__NEW_LINE_18e671b7da28026b__ echo \"\")",
+      "Bash(__NEW_LINE_7ca3336bd17173c5__ echo \"\")",
+      "WebFetch(domain:phenomenonstudio.com)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(node -e:*)",
+      "Bash(npm run build:*)"
+    ]
+  }
+}

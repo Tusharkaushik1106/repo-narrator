@@ -15,14 +15,13 @@ export function UsageIndicator() {
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="fixed bottom-5 left-5 z-30 flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/90 backdrop-blur-xl px-3 py-2 text-xs shadow-lg transition-all hover:border-cyan-500/50 hover:bg-slate-800/90 hover:shadow-cyan-500/10"
+        className="fixed bottom-5 left-5 z-30 flex items-center gap-2 rounded-lg border border-fg/15 bg-canvas/90 backdrop-blur-xl px-3 py-2 text-xs shadow-lg gf-transition hover:border-tomato-jam/40 hover:bg-canvas/95 hover:shadow-tomato-jam/10"
         title="View usage statistics"
       >
-        <Zap className="h-3.5 w-3.5 text-cyan-400" />
-        <span className="font-semibold text-slate-200">Usage</span>
+        <Zap className="h-3.5 w-3.5 text-tomato-jam" />
+        <span className="font-semibold text-fg">Usage</span>
       </button>
       <UsageModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </>
   );
 }
-

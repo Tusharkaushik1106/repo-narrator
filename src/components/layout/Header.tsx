@@ -1,134 +1,403 @@
 "use client";
 
-import { AuthButton } from "@/components/auth/AuthButton";
-import { Sparkles, LayoutDashboard, Code2 } from "lucide-react";
+import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
+import { motion, AnimatePresence } from "framer-motion";
+import { AuthButton } from "@/components/auth/AuthButton";
+import { NavBrand } from "@/components/ui";
+import { LogoMark } from "@/components/ui/LogoMark";
+import { LayoutDashboard, Code2, GitFork, ArrowRight, Menu, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export function Header() {
-  const pathname = usePathname();
-  
-  if (pathname === "/dashboard" || pathname === "/workbench" || pathname === "/loading" || pathname?.startsWith("/api/auth/signin")) {
-    return null;
-  }
+// ─────────────────────────────────────────────────────────────
+// Shared brand mark
+// ─────────────────────────────────────────────────────────────
 
-  const isActive = (path: string) => pathname === path;
-
+function Brand() {
   return (
-    <header             className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800/30 bg-slate-950/70 backdrop-blur-2xl shadow-[0_4px_24px_rgba(0,0,0,0.4)] transform-gpu will-change-transform">
-      <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/8 via-transparent to-transparent pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.1),transparent_70%)] pointer-events-none" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
-      
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 relative">
-        <Link
-          href="/"
-          className="group inline-flex items-center gap-3 relative z-10 transition-transform hover:scale-[1.02] active:scale-[0.98]"
-        >
-          <div className="relative">
-            <motion.div
-              className="absolute -inset-1 rounded-xl bg-gradient-to-r from-cyan-500/30 via-sky-500/30 to-cyan-500/30 blur-lg opacity-60"
-              animate={{ 
-                opacity: [0.3, 0.6, 0.3],
-                scale: [1, 1.1, 1]
-              }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <div className="relative flex items-center justify-center rounded-3xl bg-gradient-to-br from-slate-900/90 via-slate-950/90 to-slate-900/90 ring-1 ring-cyan-500/30 shadow-lg shadow-cyan-500/10 backdrop-blur-sm group-hover:ring-cyan-400/50 transition-all duration-300 h-10 w-10">
-              <img 
-                src="/logo.png" 
-                alt="gitlore Logo" 
-                className="h-full w-full object-contain transition-all duration-300 group-hover:scale-110 brightness-310 contrast-110 z-10" 
-                style={{ filter: 'drop-shadow(0 0 1px rgba(34, 211, 238, 0.3))' }}
-              />
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0" />
-            </div>
-          </div>
-          
-          <div className="flex flex-col">
-            <motion.span 
-              className="text-base font-bold bg-gradient-to-r from-slate-50 via-cyan-100 to-slate-50 bg-clip-text text-transparent"
-              whileHover={{ 
-                backgroundImage: "linear-gradient(to right, #67e8f9, #22d3ee, #67e8f9)"
-              }}
-            >
-              gitlore
-            </motion.span>
-            <span className="text-[9px] text-slate-500 font-medium tracking-[0.15em] uppercase leading-tight">
-              your github slave
-            </span>
-          </div>
-        </Link>
-
-        <nav className="flex items-center gap-1 sm:gap-1.5">
-          <Link
-            href="/dashboard"
-            className={`group relative hidden items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-all duration-300 sm:inline-flex ${
-              isActive("/dashboard")
-                ? "text-cyan-300"
-                : "text-slate-400 hover:text-cyan-300"
-            }`}
-          >
-            <div className={`absolute inset-0 rounded-xl transition-all duration-300 ${
-              isActive("/dashboard")
-                ? "bg-gradient-to-r from-cyan-500/15 to-sky-500/15 ring-1 ring-cyan-500/30 shadow-lg shadow-cyan-500/10"
-                : "bg-slate-800/0 group-hover:bg-slate-800/40 group-hover:ring-1 group-hover:ring-cyan-500/20"
-            }`} />
-            
-            <LayoutDashboard className={`h-4 w-4 relative z-10 transition-all duration-300 ${
-              isActive("/dashboard") ? "text-cyan-400" : "text-slate-500 group-hover:text-cyan-400 group-hover:scale-110"
-            }`} />
-            <span className="relative z-10">Dashboard</span>
-            
-            {isActive("/dashboard") && (
-              <motion.div
-                className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-500/10 to-sky-500/10 ring-1 ring-cyan-500/20"
-                layoutId="activeNav"
-                initial={false}
-                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              />
-            )}
-          </Link>
-          
-          <Link
-            href="/workbench"
-            className={`group relative hidden items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-all duration-300 sm:inline-flex ${
-              isActive("/workbench")
-                ? "text-cyan-300"
-                : "text-slate-400 hover:text-cyan-300"
-            }`}
-          >
-            <div className={`absolute inset-0 rounded-xl transition-all duration-300 ${
-              isActive("/workbench")
-                ? "bg-gradient-to-r from-cyan-500/15 to-sky-500/15 ring-1 ring-cyan-500/30 shadow-lg shadow-cyan-500/10"
-                : "bg-slate-800/0 group-hover:bg-slate-800/40 group-hover:ring-1 group-hover:ring-cyan-500/20"
-            }`} />
-            
-            <Code2 className={`h-4 w-4 relative z-10 transition-all duration-300 ${
-              isActive("/workbench") ? "text-cyan-400" : "text-slate-500 group-hover:text-cyan-400 group-hover:scale-110"
-            }`} />
-            <span className="relative z-10">Workbench</span>
-            
-            {isActive("/workbench") && (
-              <motion.div
-                className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-500/10 to-sky-500/10 ring-1 ring-cyan-500/20"
-                layoutId="activeNav"
-                initial={false}
-                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              />
-            )}
-          </Link>
-          <div className="h-6 w-px bg-gradient-to-b from-transparent via-slate-700/60 to-transparent mx-1.5 relative">
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-          </div>
-          
-          <div className="relative">
-            <AuthButton />
-          </div>
-        </nav>
-      </div>
-    </header>
+    <NavBrand
+      href="/"
+      logo={<LogoMark className="h-full w-full" />}
+      name="gitlore"
+      tagline="speak fluent repository"
+    />
   );
 }
 
+// ─────────────────────────────────────────────────────────────
+// MarketingNav — floating pill
+// ─────────────────────────────────────────────────────────────
+
+const MARKETING_LINKS = [
+  { label: "How it works", href: "/#how-it-works" },
+  { label: "Extension",    href: "/#extension"    },
+  { label: "Changelog",    href: "/changelog"     },
+];
+
+function MarketingNav() {
+  const { data: session } = useSession();
+  const pathname = usePathname();
+  const [scrolled,   setScrolled]   = React.useState(false);
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 40);
+    handler();
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
+  }, []);
+
+  React.useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  React.useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+
+  return (
+    <>
+      {/* Floating pill — pointer-events-none on the header so content scrolls freely */}
+      <header className="sticky top-0 z-50 flex justify-center px-4 pt-3 pb-1 pointer-events-none">
+        <nav
+          aria-label="Main navigation"
+          className={cn(
+            "pointer-events-auto relative flex items-center gap-1 rounded-2xl px-3 py-2",
+            "border backdrop-blur-xl transition-all duration-300 ease-in-out",
+            scrolled
+              ? "bg-canvas/88 border-fg/12 shadow-[0_8px_40px_rgba(0,0,0,0.55)]"
+              : "bg-canvas/45 border-fg/8  shadow-[0_4px_20px_rgba(0,0,0,0.25)]",
+          )}
+        >
+          {/* Top accent shimmer */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-tomato-jam/45 to-transparent"
+          />
+
+          {/* Brand */}
+          <div className="shrink-0 px-1">
+            <Brand />
+          </div>
+
+          <div className="hidden md:block mx-2 h-4 w-px shrink-0 bg-fg/10" />
+
+          {/* Desktop nav links */}
+          <div className="hidden md:flex items-center gap-0.5">
+            {MARKETING_LINKS.map(({ label, href }) => {
+              const isActive =
+                href === "/" ? pathname === "/" : pathname?.startsWith(href) ?? false;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn(
+                    "relative inline-flex items-center rounded-xl px-3.5 py-1.5",
+                    "text-sm font-medium transition-colors duration-150",
+                    isActive
+                      ? "text-tomato-jam"
+                      : "text-fg/50 hover:text-fg hover:bg-fg/6",
+                  )}
+                >
+                  {isActive && (
+                    <motion.span
+                      layoutId="mkt-active-bg"
+                      className="absolute inset-0 rounded-xl bg-tomato-jam/8"
+                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                    />
+                  )}
+                  <span className="relative">{label}</span>
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="hidden md:block mx-2 h-4 w-px shrink-0 bg-fg/10" />
+
+          {/* Actions */}
+          <div className="hidden md:flex items-center gap-1">
+            <AuthButton />
+          </div>
+
+          {/* Primary CTA */}
+          <Link
+            href="/dashboard"
+            className={cn(
+              "hidden md:inline-flex items-center gap-2 rounded-xl px-4 py-2 ml-1.5",
+              "text-sm font-semibold text-white",
+              "bg-tomato-jam shadow-md shadow-tomato-jam/25",
+              "transition-all duration-150",
+              "hover:bg-tomato-jam/85 hover:shadow-lg hover:shadow-tomato-jam/35",
+            )}
+            aria-label={session ? "Go to dashboard" : "Sign in and analyze a repo"}
+          >
+            <GitFork className="h-3.5 w-3.5" />
+            <span>{session ? "Dashboard" : "Get started"}</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+
+          {/* Mobile hamburger */}
+          <button
+            type="button"
+            onClick={() => setMobileOpen((v) => !v)}
+            className={cn(
+              "md:hidden ml-1 inline-flex h-9 w-9 items-center justify-center rounded-xl",
+              "text-fg/60 transition-colors hover:bg-fg/8 hover:text-fg",
+              "outline-none focus-visible:ring-2 focus-visible:ring-tomato-jam/50",
+            )}
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </nav>
+      </header>
+
+      {/* Mobile overlay */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            key="mobile-overlay"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            className="fixed inset-0 z-[9998] flex flex-col bg-canvas/97 backdrop-blur-2xl md:hidden"
+          >
+            <div className="flex h-16 shrink-0 items-center justify-between border-b border-fg/8 px-4">
+              <Brand />
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-fg/60 transition-colors hover:bg-fg/8 hover:text-fg"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex flex-1 flex-col overflow-y-auto px-4 py-6 gap-1">
+              {MARKETING_LINKS.map(({ label, href }, i) => (
+                <motion.div
+                  key={href}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.04 + i * 0.05, duration: 0.18 }}
+                >
+                  <Link
+                    href={href}
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 rounded-2xl px-5 py-4 text-base font-semibold text-fg/70 transition-colors hover:bg-fg/5 hover:text-fg"
+                  >
+                    {label}
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18, duration: 0.2 }}
+              className="shrink-0 border-t border-fg/8 px-4 py-5 flex flex-col gap-3"
+            >
+              <Link
+                href="/dashboard"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white bg-tomato-jam"
+              >
+                <GitFork className="h-4 w-4" />
+                {session ? "Dashboard" : "Get started"}
+              </Link>
+              <div className="flex items-center justify-center gap-2">
+                <AuthButton />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// AppNav — floating pill, for /dashboard and /workbench
+// ─────────────────────────────────────────────────────────────
+
+const APP_LINKS = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Workbench", href: "/workbench", icon: Code2 },
+];
+
+function AppNav() {
+  const pathname  = usePathname();
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  React.useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  React.useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+
+  return (
+    <>
+      <header className="sticky top-0 z-50 flex justify-center px-4 pt-3 pb-1 pointer-events-none">
+        <nav
+          aria-label="App navigation"
+          className={cn(
+            "pointer-events-auto relative flex items-center gap-1 rounded-2xl px-3 py-2",
+            "border backdrop-blur-xl",
+            "bg-canvas/88 border-fg/12 shadow-[0_8px_40px_rgba(0,0,0,0.55)]",
+          )}
+        >
+          {/* Top accent shimmer */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-tomato-jam/45 to-transparent"
+          />
+
+          {/* Brand */}
+          <div className="shrink-0 px-1">
+            <Brand />
+          </div>
+
+          <div className="hidden md:block mx-2 h-4 w-px shrink-0 bg-fg/10" />
+
+          {/* Desktop nav links */}
+          <div className="hidden md:flex items-center gap-0.5">
+            {APP_LINKS.map(({ label, href, icon: Icon }) => {
+              const isActive = pathname?.startsWith(href) ?? false;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn(
+                    "relative inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5",
+                    "text-sm font-medium transition-colors duration-150",
+                    isActive
+                      ? "text-tomato-jam"
+                      : "text-fg/50 hover:text-fg hover:bg-fg/6",
+                  )}
+                >
+                  {isActive && (
+                    <motion.span
+                      layoutId="app-active-bg"
+                      className="absolute inset-0 rounded-xl bg-tomato-jam/8"
+                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                    />
+                  )}
+                  <Icon className="relative h-3.5 w-3.5 shrink-0" />
+                  <span className="relative">{label}</span>
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="hidden md:block mx-2 h-4 w-px shrink-0 bg-fg/10" />
+
+          {/* Actions */}
+          <div className="hidden md:flex items-center gap-1">
+            <AuthButton />
+          </div>
+
+          {/* Mobile hamburger */}
+          <button
+            type="button"
+            onClick={() => setMobileOpen((v) => !v)}
+            className={cn(
+              "md:hidden ml-1 inline-flex h-9 w-9 items-center justify-center rounded-xl",
+              "text-fg/60 transition-colors hover:bg-fg/8 hover:text-fg",
+              "outline-none focus-visible:ring-2 focus-visible:ring-tomato-jam/50",
+            )}
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </nav>
+      </header>
+
+      {/* Mobile overlay */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            key="app-mobile-overlay"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            className="fixed inset-0 z-[9998] flex flex-col bg-canvas/97 backdrop-blur-2xl md:hidden"
+          >
+            <div className="flex h-16 shrink-0 items-center justify-between border-b border-fg/8 px-4">
+              <Brand />
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-fg/60 transition-colors hover:bg-fg/8 hover:text-fg"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex flex-1 flex-col overflow-y-auto px-4 py-6 gap-1">
+              {APP_LINKS.map(({ label, href, icon: Icon }, i) => (
+                <motion.div
+                  key={href}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.04 + i * 0.05, duration: 0.18 }}
+                >
+                  <Link
+                    href={href}
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-2xl px-5 py-4 text-base font-semibold transition-colors",
+                      pathname?.startsWith(href)
+                        ? "bg-tomato-jam/8 text-tomato-jam"
+                        : "text-fg/70 hover:bg-fg/5 hover:text-fg",
+                    )}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" />
+                    {label}
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18, duration: 0.2 }}
+              className="shrink-0 border-t border-fg/8 px-4 py-5"
+            >
+              <AuthButton />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Header — route-aware dispatcher
+// ─────────────────────────────────────────────────────────────
+
+export function Header() {
+  const pathname = usePathname();
+
+  if (
+    pathname === "/loading" ||
+    pathname?.startsWith("/api/auth/signin")
+  ) {
+    return null;
+  }
+
+  if (
+    pathname === "/dashboard" ||
+    pathname?.startsWith("/workbench")
+  ) {
+    return <AppNav />;
+  }
+
+  return <MarketingNav />;
+}

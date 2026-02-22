@@ -354,8 +354,8 @@ export function MermaidDiagram({ code, id = "mermaid-diagram", onError }: Mermai
               <div class="p-3 rounded-lg border border-amber-500/30 bg-amber-950/20">
                 <p class="text-xs text-amber-400 font-medium mb-2">Diagram failed to render</p>
                 <details class="text-xs">
-                  <summary class="text-slate-400 cursor-pointer hover:text-slate-300 mb-1">View original code</summary>
-                  <pre class="mt-2 p-2 bg-slate-900/50 rounded text-slate-300 text-[10px] overflow-auto max-h-32 whitespace-pre-wrap">${escapedCode}</pre>
+                  <summary class="text-fg cursor-pointer hover:text-fg mb-1">View original code</summary>
+                  <pre class="mt-2 p-2 bg-canvas/50 rounded text-fg text-[10px] overflow-auto max-h-32 whitespace-pre-wrap">${escapedCode}</pre>
                 </details>
               </div>
             `;
@@ -388,7 +388,7 @@ export function MermaidDiagram({ code, id = "mermaid-diagram", onError }: Mermai
   }, [code, id]);
 
   return (
-    <div className="w-full text-slate-100 space-y-1">
+    <div className="w-full text-fg space-y-1">
       {errorMessage && (
         <p className="text-[11px] text-amber-400">
           {errorMessage}

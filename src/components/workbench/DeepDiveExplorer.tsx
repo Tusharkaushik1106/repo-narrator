@@ -5,19 +5,17 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import ReactFlow, { Background } from "reactflow";
 import "reactflow/dist/style.css";
 import Editor from "@monaco-editor/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRepoContext } from "@/context/RepoContext";
 import { useFileContext } from "@/context/FileContext";
 import { useEffect, useState, useMemo, useCallback, memo, useRef } from "react";
 import { MermaidDiagram } from "@/components/diagrams/MermaidDiagram";
 import ReactMarkdown from "react-markdown";
 import { ChevronRight, ChevronDown, Folder, File, Route, Zap, Sparkles } from "lucide-react";
-import { AuthButton } from "@/components/auth/AuthButton";
-import Link from "next/link";
 
 function cleanMermaidCode(raw: string | null): string | null {
   if (!raw) return null;
-  
+
   let cleaned = raw.replace(/```mermaid/g, "").replace(/```/g, "");
 
   cleaned = cleaned.replace(/("[^"]+")([A-Za-z0-9]+)/g, '$1\n$2');
@@ -185,26 +183,26 @@ const FileTreeItem = memo(
 
     const dotColor =
       item.complexity === "red"
-        ? "#fb7185"
+        ? "#c0392b"
         : item.complexity === "yellow"
-          ? "#fbbf24"
+          ? "#d4af37"
           : "#22c55e";
 
     if (isFolder) {
       return (
         <>
           <li
-            className="flex items-center gap-1.5 rounded-lg px-2 py-1 cursor-pointer hover:bg-slate-900/60 transition-colors"
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1 cursor-pointer hover:bg-fg/5 transition-colors"
             style={{ paddingLeft: `${0.5 + level * 0.75}rem` }}
             onClick={() => onToggleFolder(item.path)}
           >
             {isExpanded ? (
-              <ChevronDown className="h-3 w-3 text-slate-400 flex-shrink-0" />
+              <ChevronDown className="h-3 w-3 text-fg/30 flex-shrink-0" />
             ) : (
-              <ChevronRight className="h-3 w-3 text-slate-400 flex-shrink-0" />
+              <ChevronRight className="h-3 w-3 text-fg/30 flex-shrink-0" />
             )}
-            <Folder className="h-3.5 w-3.5 text-cyan-400/70 flex-shrink-0" />
-            <span className="truncate font-mono text-[11px] text-slate-300">{item.name}</span>
+            <Folder className="h-3.5 w-3.5 text-tomato-jam/60 flex-shrink-0" />
+            <span className="truncate font-mono text-[11px] text-fg/70">{item.name}</span>
           </li>
           {isExpanded &&
             item.children?.map((child, index) => (
@@ -228,29 +226,29 @@ const FileTreeItem = memo(
       <li
         className={`flex items-center gap-1.5 rounded-lg px-2 py-1 cursor-pointer transition-colors ${
           fileIsSelected
-            ? "bg-cyan-500/20 border-l-2 border-cyan-400"
-            : "hover:bg-slate-900/60"
+            ? "bg-tomato-jam/15 border-l-2 border-tomato-jam"
+            : "hover:bg-fg/5"
         }`}
         style={{ paddingLeft: `${0.5 + level * 0.75}rem` }}
         onClick={() => onSelectFile(item.path)}
       >
         <div className="h-3.5 w-3.5 flex-shrink-0 flex items-center justify-center">
           {item.isRoute ? (
-            <Route className="h-3 w-3 text-purple-400" />
+            <Route className="h-3 w-3 text-metallic-gold" />
           ) : (
-            <File className="h-3 w-3 text-slate-400" />
+            <File className="h-3 w-3 text-fg/30" />
           )}
         </div>
         <span
           className={`truncate font-mono text-[11px] flex-1 ${
-            fileIsSelected ? "text-cyan-200 font-medium" : "text-slate-200"
+            fileIsSelected ? "text-tomato-jam font-medium" : "text-fg/70"
           }`}
         >
           {item.name}
         </span>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {item.isImportant && (
-            <Zap className="h-2.5 w-2.5 text-amber-400" fill="currentColor" />
+            <Zap className="h-2.5 w-2.5 text-metallic-gold" fill="currentColor" />
           )}
           {item.complexity && (
             <span
@@ -404,7 +402,7 @@ export function DeepDiveExplorer() {
       setError(null);
       setSummary('Loading file content...');
       setMermaid(null);
-      
+
       fetch(`https://raw.githubusercontent.com/${owner}/${name}/HEAD/${selectedPath}`, {
         headers: { "User-Agent": "gitlore" },
         signal: controller.signal,
@@ -415,14 +413,14 @@ export function DeepDiveExplorer() {
             throw new Error(`Failed to fetch file: ${selectedPath}`);
           }
           const fileContent: string = await res.text();
-          
+
           if (controller.signal.aborted) return;
-          
+
           const codePayload: string =
             fileContent.length > 16000
               ? `${fileContent.slice(0, 16000)}\n// … truncated`
               : fileContent;
-          
+
           setEditorValue(codePayload);
           setCurrentFile({
             path: selectedPath,
@@ -501,7 +499,7 @@ export function DeepDiveExplorer() {
         summary: typeof data.summary === "string" ? data.summary : String(data.summary || ""),
         mermaid: cleanMermaid,
       };
-      
+
       setEditorValue(next.code);
       setSummary(next.summary);
       setMermaid(next.mermaid);
@@ -534,301 +532,283 @@ export function DeepDiveExplorer() {
 
   return (
     <main className="flex h-screen flex-col overflow-hidden">
-      <div className="border-b border-slate-800/80 bg-slate-950/90 shadow-lg shadow-slate-900/30 px-4 sm:px-6 lg:px-8 flex-shrink-0">
-        <div className="mx-auto flex max-w-7xl items-center justify-between h-14">
-          <div className="flex items-center gap-6">
-            <Link
-              href="/"
-              className="group inline-flex items-center gap-2.5 text-base font-semibold text-slate-50 transition-all hover:text-cyan-400"
-            >
-              <div className="relative h-6 w-6">
-                <img 
-                  src="/logo.png" 
-                  alt="gitlore Logo" 
-                  className="h-full w-full object-contain transition-transform group-hover:rotate-12" 
-                />
-                <div className="absolute inset-0 h-6 w-6 animate-pulse rounded-full bg-cyan-400/20 blur-sm" />
-              </div>
-              <span className="bg-gradient-to-r from-slate-50 to-slate-300 bg-clip-text text-transparent group-hover:from-cyan-300 group-hover:to-cyan-100 transition-all">
-                gitlore
-              </span>
-            </Link>
-            <div className="h-6 w-px bg-slate-700/50" />
-            <Link
-              href="/dashboard"
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-400 transition-all hover:bg-slate-800/60 hover:text-cyan-300"
-            >
-              Dashboard
-            </Link>
-          </div>
-          <AuthButton />
-        </div>
-      </div>
+
+      {/* ── Three-panel workbench ── */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <PanelGroup
           direction="horizontal"
-          className="glass-panel flex h-full w-full overflow-hidden border border-slate-700/70 bg-slate-950/90 m-2"
+          className="gf-card flex h-full w-full overflow-hidden border border-fg/10 bg-canvas/90 m-2"
         >
-        <Panel defaultSize={22} minSize={16} className="border-r border-slate-800/80">
-          <aside className="flex h-full flex-col bg-slate-950/90 min-h-0">
-            <header className="border-b border-slate-800/80 px-3 py-2.5 flex-shrink-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Files
-              </p>
-            </header>
-            <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2.5 text-xs transform-gpu scrollbar-thin">
-              <ul className="space-y-0.5">
-                {treeStructure.map((item, index) => (
-                  <FileTreeItem
-                    key={`${item.path}-${item.type}-${index}`}
-                    item={item}
-                    selectedPath={selectedPath}
-                    expandedFolders={expandedFolders}
-                    onToggleFolder={handleToggleFolder}
-                    onSelectFile={handleFileSelect}
-                  />
-                ))}
-              </ul>
-            </div>
-          </aside>
-        </Panel>
-
-        <PanelResizeHandle className="w-[1px] bg-gradient-to-b from-cyan-400/70 via-slate-600 to-fuchsia-500/80" />
-
-        <Panel defaultSize={40} minSize={28} className="border-r border-slate-800/80">
-          <section className="flex h-full flex-col bg-slate-950/90 min-h-0">
-            <header className="border-b border-slate-800/80 px-3 py-2.5 flex-shrink-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Code
-              </p>
-              <p className="text-[11px] text-slate-500">
-                Loaded directly from GitHub for the analyzed repository.
-              </p>
-            </header>
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <Editor
-                theme="vs-dark"
-                defaultLanguage="typescript"
-                options={{
-                  readOnly: true,
-                  fontLigatures: true,
-                  fontSize: 13,
-                  minimap: { enabled: false },
-                  scrollBeyondLastLine: false,
-                  smoothScrolling: false,
-                  renderWhitespace: "none",
-                  renderLineHighlight: "none",
-                  codeLens: false,
-                }}
-                value={editorValue}
-                loading={<div className="text-slate-400">Loading editor...</div>}
-              />
-            </div>
-          </section>
-        </Panel>
-
-        <PanelResizeHandle className="w-[1px] bg-gradient-to-b from-fuchsia-500/80 via-slate-600 to-cyan-400/70" />
-
-        <Panel defaultSize={38} minSize={26}>
-          <section className="flex h-full flex-col bg-slate-950/90 min-h-0">
-            <header className="border-b border-slate-800/80 px-3 py-2.5 flex-shrink-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                The Narrator
-              </p>
-              <p className="text-[11px] text-slate-500">
-                Context-aware summaries and sequence diagrams.
-              </p>
-            </header>
-            <div className="grid flex-1 min-h-0 grid-rows-[minmax(0,0.55fr)_minmax(0,0.45fr)] gap-2.5 p-2.5">
-              <motion.div
-                className="glass-panel relative flex flex-col overflow-hidden border border-sky-500/30 bg-slate-950/90 px-3 py-2 text-[11px] min-h-0"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-sky-300 flex-shrink-0">
-                  File summary
+          {/* ── Panel 1: File tree ── */}
+          <Panel defaultSize={22} minSize={16} className="border-r border-fg/8">
+            <aside className="flex h-full flex-col bg-canvas/90 min-h-0">
+              <header className="border-b border-fg/8 px-3 py-2.5 flex-shrink-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fg/40">
+                  Files
                 </p>
-                <div className="mt-1 flex-1 min-h-0 overflow-y-auto pr-1 text-slate-200 text-[11px] markdown-body transform-gpu scrollbar-thin">
-                  {loading ? (
-                    "Analyzing file with Gemini…"
-                  ) : error ? (
-                    <div className="rounded-lg border border-rose-500/30 bg-rose-950/20 p-2 text-rose-300">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="font-medium">Error loading summary</p>
-                        <button
-                          onClick={() => {
-                            setError(null);
-                            setCache((prev) => {
-                              const next = { ...prev };
-                              if (selectedPath) {
-                                delete next[selectedPath];
-                              }
-                              return next;
-                            });
-                            void handleGenerateSummary();
-                          }}
-                          className="text-[10px] px-2 py-0.5 rounded border border-rose-400/50 hover:bg-rose-500/20 transition-colors"
-                        >
-                          Retry
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-rose-400 whitespace-pre-wrap">{error}</p>
-                      {error.includes("rate limit") && (
-                        <p className="text-[10px] text-rose-300/70 mt-2 italic">
-                          Note: The free tier limit is per API key. If you changed your API key, the new key may also be on a restricted quota tier.
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      {showGenerateCta && (
-                        <button
-                          type="button"
-                          onClick={() => handleGenerateSummary()}
-                          disabled={!canGenerate}
-                          className="mb-2 inline-flex items-center gap-1 rounded border border-sky-500/40 bg-sky-500/10 px-2 py-1 text-[10px] font-medium text-sky-100 transition-colors hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <Sparkles className="h-3 w-3" />
-                          Generate AI Insight
-                        </button>
-                      )}
-                      <ReactMarkdown>
-                        {typeof summary === "string" ? summary : String(summary || "")}
-                      </ReactMarkdown>
-                    </>
-                  )}
-                </div>
-              </motion.div>
+              </header>
+              <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2.5 text-xs transform-gpu scrollbar-thin">
+                <ul className="space-y-0.5">
+                  {treeStructure.map((item, index) => (
+                    <FileTreeItem
+                      key={`${item.path}-${item.type}-${index}`}
+                      item={item}
+                      selectedPath={selectedPath}
+                      expandedFolders={expandedFolders}
+                      onToggleFolder={handleToggleFolder}
+                      onSelectFile={handleFileSelect}
+                    />
+                  ))}
+                </ul>
+              </div>
+            </aside>
+          </Panel>
 
-              <div className="glass-panel relative flex flex-col overflow-hidden border border-fuchsia-500/30 bg-slate-950/90 px-3 py-3 text-xs min-h-0">
-                <div className="mb-1 flex items-center justify-between gap-2 flex-shrink-0">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-fuchsia-300">
-                    Sequence / architecture diagram
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setFullScreen(true)}
-                    className="rounded-full border border-fuchsia-400/70 px-2 py-0.5 text-[10px] font-medium text-fuchsia-100 hover:bg-fuchsia-500/10"
-                  >
-                    Full screen
-                  </button>
-                </div>
-                <div
-                  className="mt-1 flex-1 min-h-0 overflow-auto"
-                  style={{
-                    willChange: "scroll-position",
-                    transform: "translateZ(0)",
+          <PanelResizeHandle className="w-[1px] bg-gradient-to-b from-tomato-jam/50 via-fg/10 to-metallic-gold/50" />
+
+          {/* ── Panel 2: Monaco Editor ── */}
+          <Panel defaultSize={40} minSize={28} className="border-r border-fg/8">
+            <section className="flex h-full flex-col bg-canvas/90 min-h-0">
+              <header className="border-b border-fg/8 px-3 py-2.5 flex-shrink-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fg/40">
+                  Code
+                </p>
+                <p className="text-[11px] text-fg/25">
+                  Loaded directly from GitHub for the analyzed repository.
+                </p>
+              </header>
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <Editor
+                  theme="vs-dark"
+                  defaultLanguage="typescript"
+                  options={{
+                    readOnly: true,
+                    fontLigatures: true,
+                    fontSize: 13,
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    smoothScrolling: false,
+                    renderWhitespace: "none",
+                    renderLineHighlight: "none",
+                    codeLens: false,
                   }}
+                  value={editorValue}
+                  loading={<div className="text-fg/40">Loading editor...</div>}
+                />
+              </div>
+            </section>
+          </Panel>
+
+          <PanelResizeHandle className="w-[1px] bg-gradient-to-b from-metallic-gold/50 via-fg/10 to-tomato-jam/50" />
+
+          {/* ── Panel 3: Narrator ── */}
+          <Panel defaultSize={38} minSize={26}>
+            <section className="flex h-full flex-col bg-canvas/90 min-h-0">
+              <header className="border-b border-fg/8 px-3 py-2.5 flex-shrink-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fg/40">
+                  The Narrator
+                </p>
+                <p className="text-[11px] text-fg/25">
+                  Context-aware summaries and sequence diagrams.
+                </p>
+              </header>
+              <div className="grid flex-1 min-h-0 grid-rows-[minmax(0,0.55fr)_minmax(0,0.45fr)] gap-2.5 p-2.5">
+
+                {/* File summary sub-panel */}
+                <motion.div
+                  className="gf-card relative flex flex-col overflow-hidden border border-tomato-jam/20 bg-canvas/90 px-3 py-2 text-[11px] min-h-0"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
                 >
-                  {loading && !mermaid ? (
-                    <div className="flex h-full items-center justify-center text-[11px] text-slate-400">
-                      Generating flow chart with Gemini…
-                    </div>
-                  ) : mermaid && mermaid.trim() ? (
-                    <div
-                      style={{
-                        willChange: "transform",
-                        transform: "translateZ(0)",
-                        minHeight: "100%",
-                      }}
-                    >
-                      <MermaidDiagram 
-                        key={`workbench-${selectedPath}-${mermaid?.slice(0, 50)}`}
-                        code={mermaid} 
-                        id="mermaid-panel" 
-                      />
-                    </div>
-                  ) : selectedPath ? (
-                    <div className="flex h-full items-center justify-center text-[11px] text-slate-400">
-                      <div className="text-center">
-                        <p>
-                          {showGenerateCta
-                            ? 'Click "Generate AI Insight" to request a diagram for this file.'
-                            : "No diagram available for this file."}
-                        </p>
-                        {!showGenerateCta && (
-                          <p className="text-[10px] text-slate-500 mt-1">
-                            Gemini did not generate a diagram for this file.
+                  <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-tomato-jam flex-shrink-0">
+                    File summary
+                  </p>
+                  <div className="mt-1 flex-1 min-h-0 overflow-y-auto pr-1 text-fg/80 text-[11px] markdown-body transform-gpu scrollbar-thin">
+                    {loading ? (
+                      <span className="text-fg/40">Analyzing file with Gemini…</span>
+                    ) : error ? (
+                      <div className="rounded-xl border border-tomato-jam/30 bg-tomato-jam/5 p-2 text-tomato-jam/80">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <p className="font-medium">Error loading summary</p>
+                          <button
+                            onClick={() => {
+                              setError(null);
+                              setCache((prev) => {
+                                const next = { ...prev };
+                                if (selectedPath) {
+                                  delete next[selectedPath];
+                                }
+                                return next;
+                              });
+                              void handleGenerateSummary();
+                            }}
+                            className="text-[10px] px-2 py-0.5 rounded border border-tomato-jam/40 hover:bg-tomato-jam/10 transition-colors"
+                          >
+                            Retry
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-tomato-jam/60 whitespace-pre-wrap">{error}</p>
+                        {error.includes("rate limit") && (
+                          <p className="text-[10px] text-fg/30 mt-2 italic">
+                            Note: The free tier limit is per API key. If you changed your API key, the new key may also be on a restricted quota tier.
                           </p>
                         )}
                       </div>
-                    </div>
-                  ) : (
-                    <ReactFlow
-                      nodes={initialNodes}
-                      edges={initialEdges}
-                      fitView
-                      nodesDraggable={false}
-                      nodesConnectable={false}
-                      elementsSelectable={false}
-                      panOnDrag={false}
-                      zoomOnScroll={false}
-                      zoomOnPinch={false}
+                    ) : (
+                      <>
+                        {showGenerateCta && (
+                          <button
+                            type="button"
+                            onClick={() => handleGenerateSummary()}
+                            disabled={!canGenerate}
+                            className="mb-2 inline-flex items-center gap-1 rounded-lg border border-tomato-jam/30 bg-tomato-jam/8 px-2 py-1 text-[10px] font-medium text-fg transition-colors hover:bg-tomato-jam/15 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <Sparkles className="h-3 w-3" />
+                            Generate AI Insight
+                          </button>
+                        )}
+                        <ReactMarkdown>
+                          {typeof summary === "string" ? summary : String(summary || "")}
+                        </ReactMarkdown>
+                      </>
+                    )}
+                  </div>
+                </motion.div>
+
+                {/* Diagram sub-panel */}
+                <div className="gf-card relative flex flex-col overflow-hidden border border-metallic-gold/20 bg-canvas/90 px-3 py-3 text-xs min-h-0">
+                  <div className="mb-1 flex items-center justify-between gap-2 flex-shrink-0">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-metallic-gold">
+                      Sequence / architecture diagram
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setFullScreen(true)}
+                      className="rounded-full border border-metallic-gold/40 px-2 py-0.5 text-[10px] font-medium text-metallic-gold/80 hover:bg-metallic-gold/8 transition-colors"
                     >
-                      <Background
-                        color="rgba(148,163,184,0.3)"
-                        gap={16}
-                        size={0.75}
-                      />
-                    </ReactFlow>
-                  )}
+                      Full screen
+                    </button>
+                  </div>
+                  <div
+                    className="mt-1 flex-1 min-h-0 overflow-auto"
+                    style={{ willChange: "scroll-position", transform: "translateZ(0)" }}
+                  >
+                    {loading && !mermaid ? (
+                      <div className="flex h-full items-center justify-center text-[11px] text-fg/40">
+                        Generating flow chart with Gemini…
+                      </div>
+                    ) : mermaid && mermaid.trim() ? (
+                      <div style={{ willChange: "transform", transform: "translateZ(0)", minHeight: "100%" }}>
+                        <MermaidDiagram
+                          key={`workbench-${selectedPath}-${mermaid?.slice(0, 50)}`}
+                          code={mermaid}
+                          id="mermaid-panel"
+                        />
+                      </div>
+                    ) : selectedPath ? (
+                      <div className="flex h-full items-center justify-center text-[11px] text-fg/40">
+                        <div className="text-center">
+                          <p>
+                            {showGenerateCta
+                              ? 'Click "Generate AI Insight" to request a diagram for this file.'
+                              : "No diagram available for this file."}
+                          </p>
+                          {!showGenerateCta && (
+                            <p className="text-[10px] text-fg/25 mt-1">
+                              Gemini did not generate a diagram for this file.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <ReactFlow
+                        nodes={initialNodes}
+                        edges={initialEdges}
+                        fitView
+                        nodesDraggable={false}
+                        nodesConnectable={false}
+                        elementsSelectable={false}
+                        panOnDrag={false}
+                        zoomOnScroll={false}
+                        zoomOnPinch={false}
+                      >
+                        <Background
+                          color="rgba(148,163,184,0.3)"
+                          gap={16}
+                          size={0.75}
+                        />
+                      </ReactFlow>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
-        </Panel>
+            </section>
+          </Panel>
         </PanelGroup>
       </div>
 
-      {fullScreen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xl">
-          <div className="relative h-[80vh] w-[90vw] max-w-5xl rounded-2xl border border-fuchsia-500/60 bg-slate-950/95 p-4 shadow-2xl shadow-fuchsia-500/30">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-300">
-                Sequence / architecture diagram – full screen
-              </p>
-              <button
-                type="button"
-                onClick={() => setFullScreen(false)}
-                className="rounded-full bg-slate-900 px-3 py-1 text-xs text-slate-200 hover:bg-slate-800"
-              >
-                Close
-              </button>
-            </div>
-            <div
-              className="h-[calc(100%-2.5rem)] w-full overflow-auto rounded-xl bg-slate-950/90 p-3"
-              style={{
-                willChange: "scroll-position",
-                transform: "translateZ(0)",
-              }}
+      {/* ── Fullscreen diagram modal ── */}
+      <AnimatePresence>
+        {fullScreen && (
+          <>
+            <motion.div
+              key="dde-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setFullScreen(false)}
+              className="fixed inset-0 z-[49] bg-canvas/80 backdrop-blur-xl"
+              aria-hidden
+            />
+            <motion.div
+              key="dde-panel"
+              initial={{ opacity: 0, scale: 0.96, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 16 }}
+              transition={{ duration: 0.28, ease: [0, 0, 0.2, 1] }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-6"
             >
-              {loading && !mermaid ? (
-                <div className="flex h-full items-center justify-center text-xs text-slate-400">
-                  Generating flow chart with Gemini…
+              <div className="relative h-[80vh] w-full max-w-5xl rounded-3xl border border-metallic-gold/40 bg-canvas/95 p-4 shadow-2xl shadow-metallic-gold/20">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-metallic-gold">
+                    Sequence / architecture diagram – full screen
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setFullScreen(false)}
+                    className="rounded-xl bg-fg/5 px-3 py-1 text-xs text-fg/70 hover:bg-fg/10 gf-transition-fast"
+                  >
+                    Close
+                  </button>
                 </div>
-              ) : mermaid ? (
                 <div
-                  style={{
-                    willChange: "transform",
-                    transform: "translateZ(0)",
-                    minHeight: "100%",
-                  }}
+                  className="h-[calc(100%-2.5rem)] w-full overflow-auto rounded-2xl bg-canvas/90 p-3"
+                  style={{ willChange: "scroll-position", transform: "translateZ(0)" }}
                 >
-                  <MermaidDiagram 
-                    key={`fullscreen-${mermaid?.slice(0, 50)}`}
-                    code={mermaid} 
-                    id="mermaid-fullscreen" 
-                  />
+                  {loading && !mermaid ? (
+                    <div className="flex h-full items-center justify-center text-xs text-fg/40">
+                      Generating flow chart with Gemini…
+                    </div>
+                  ) : mermaid ? (
+                    <div style={{ willChange: "transform", transform: "translateZ(0)", minHeight: "100%" }}>
+                      <MermaidDiagram
+                        key={`fullscreen-${mermaid?.slice(0, 50)}`}
+                        code={mermaid}
+                        id="mermaid-fullscreen"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-fg/40">
+                      No Mermaid diagram available for this file.
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="flex h-full items-center justify-center text-xs text-slate-400">
-                  No Mermaid diagram available for this file.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

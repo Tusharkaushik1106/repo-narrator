@@ -1,11 +1,26 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { GithubIcon, Sparkles, Zap, Shield, Database, ArrowRight } from "lucide-react";
+import { GithubIcon, Database, Zap, Shield, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
-import clsx from "clsx";
 import Link from "next/link";
 import { useState } from "react";
+import { LogoMark } from "@/components/ui/LogoMark";
+
+const PERKS = [
+  { icon: Database, label: "Indexed repo history" },
+  { icon: Zap,      label: "Instant AI summaries" },
+  { icon: Shield,   label: "Private repo access" },
+];
+
+const GoogleIcon = (
+  <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" aria-hidden>
+    <path fill="#EA4335" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+    <path fill="#4285F4" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+  </svg>
+);
 
 export default function SignInPage() {
   const [loading, setLoading] = useState<string | null>(null);
@@ -14,193 +29,150 @@ export default function SignInPage() {
     setLoading(provider);
     try {
       await signIn(provider, { callbackUrl: "/" });
-    } catch (error) {
+    } catch {
       setLoading(null);
     }
   };
 
-  const features = [
-    { icon: Database, text: "Save repository diagrams" },
-    { icon: Zap, text: "Access your dashboard" },
-    { icon: Shield, text: "Secure authentication" },
-  ];
-
   return (
-    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-16">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-0 left-0 h-[500px] w-[500px] rounded-full bg-cyan-500/20 blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-[500px] w-[500px] rounded-full bg-fuchsia-500/20 blur-3xl" />
+    <main className="relative flex min-h-dvh overflow-hidden">
+
+      {/* ── Left: brand panel (desktop only) ── */}
+      <div className="relative hidden lg:flex lg:w-[46%] flex-col justify-between p-12 border-r border-fg/8">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-tomato-jam/10 via-transparent to-metallic-gold/5" />
+
+        {/* Brand mark */}
+        <Link href="/" className="relative flex items-center gap-2.5 w-fit group">
+          <div className="h-9 w-9 rounded-xl overflow-hidden shadow-[0_0_0_1px_rgba(192,57,43,0.28),0_0_16px_rgba(192,57,43,0.14)]">
+            <LogoMark className="h-full w-full" />
+          </div>
+          <span className="text-[17px] font-semibold text-fg/90 group-hover:text-fg transition-colors">
+            gitlore
+          </span>
+        </Link>
+
+        {/* Pitch */}
+        <div className="relative space-y-6">
+          <div>
+            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-tomato-jam/80">
+              AI-powered repo intelligence
+            </p>
+            <h2 className="text-3xl font-semibold text-fg leading-snug">
+              Understand any codebase<br />in under 60 seconds.
+            </h2>
+            <p className="mt-4 max-w-sm text-sm leading-relaxed text-fg/45">
+              gitlore parses your repository, maps its architecture, and gives you an AI that knows every file — instantly.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {PERKS.map(({ icon: Icon, label }) => (
+              <div
+                key={label}
+                className="flex items-center gap-2 rounded-full border border-fg/10 bg-fg/5 px-3 py-1.5 text-xs text-fg/55"
+              >
+                <Icon className="h-3 w-3 text-tomato-jam/70 shrink-0" />
+                {label}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <p className="relative text-xs italic text-fg/20">"speak fluent repository"</p>
       </div>
 
-      <motion.div
-        className="relative z-10 w-full max-w-md"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <motion.div
-          className="glass-panel relative overflow-hidden px-8 py-10 sm:px-10 sm:py-12"
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      {/* ── Right: auth panel ── */}
+      <div className="relative flex flex-1 flex-col items-center justify-center px-6 py-16">
+        {/* Background accent */}
+        <div className="pointer-events-none absolute top-0 right-0 h-[400px] w-[400px] rounded-full bg-tomato-jam/8 blur-3xl" />
+
+        {/* Back link */}
+        <Link
+          href="/"
+          className="absolute top-6 left-6 inline-flex items-center gap-1.5 text-xs text-fg/35 transition-colors hover:text-fg/65"
         >
-          <div className="pointer-events-none absolute inset-0 rounded-[1.25rem] bg-gradient-to-r from-cyan-500/20 via-transparent to-fuchsia-500/20 opacity-50" />
-          <div className="pointer-events-none absolute inset-0 rounded-[1.25rem] bg-[radial-gradient(circle_at_0%_0%,rgba(34,211,238,0.15),transparent_60%),radial-gradient(circle_at_100%_100%,rgba(236,72,153,0.15),transparent_60%)] opacity-80 mix-blend-screen" />
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back
+        </Link>
 
-          <div className="relative z-10">
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Link
-                href="/"
-                className="mb-8 inline-flex items-center gap-2.5 text-lg font-semibold text-slate-50 transition-all hover:text-cyan-400 group"
-              >
-                <div className="relative h-6 w-6">
-                  <img 
-                    src="/logo.png" 
-                    alt="gitlore Logo" 
-                    className="h-full w-full object-contain transition-transform group-hover:rotate-12" 
-                  />
-                  <div className="absolute inset-0 h-6 w-6 animate-pulse rounded-full bg-cyan-400/20 blur-sm" />
-                </div>
-                <span className="bg-gradient-to-r from-slate-50 to-slate-300 bg-clip-text text-transparent group-hover:from-cyan-300 group-hover:to-cyan-100 transition-all">
-                  gitlore
-                </span>
-              </Link>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="mb-8"
-            >
-              <h1 className="mb-3 text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl">
-                Welcome back
-              </h1>
-              <p className="text-sm leading-relaxed text-slate-400 sm:text-base">
-                Sign in to unlock the full power of gitlore and start exploring repositories with AI-powered insights.
-              </p>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="mb-8 space-y-2.5"
-            >
-              {features.map((feature, index) => (
-                <motion.div
-                  key={feature.text}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 + index * 0.1 }}
-                  className="flex items-center gap-3 text-sm text-slate-300"
-                >
-                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500/20 to-sky-500/20 ring-1 ring-cyan-500/30">
-                    <feature.icon className="h-3.5 w-3.5 text-cyan-400" />
-                  </div>
-                  <span>{feature.text}</span>
-                </motion.div>
-              ))}
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="space-y-3"
-            >
-              <motion.button
-                onClick={() => handleSignIn("github")}
-                disabled={loading !== null}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className={clsx(
-                  "group relative w-full inline-flex items-center justify-center gap-3 rounded-xl px-4 py-3.5 text-sm font-medium transition-all overflow-hidden",
-                  "bg-gradient-to-r from-slate-800/90 to-slate-900/90 text-slate-200 ring-1 ring-slate-700/70",
-                  "hover:from-slate-700/95 hover:to-slate-800/95 hover:text-slate-50 hover:ring-slate-600/80 hover:shadow-lg hover:shadow-cyan-500/10",
-                  "focus-ring-glow disabled:opacity-50 disabled:cursor-not-allowed"
-                )}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/10 to-cyan-500/0 opacity-0 transition-opacity group-hover:opacity-100" />
-                <GithubIcon className="relative z-10 h-5 w-5 transition-transform group-hover:scale-110" />
-                <span className="relative z-10">Continue with GitHub</span>
-                {loading === "github" && (
-                  <div className="relative z-10 ml-2 h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
-                )}
-              </motion.button>
+        <motion.div
+          className="relative z-10 w-full max-w-[340px]"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {/* Mobile-only brand */}
+          <Link href="/" className="mb-8 flex items-center gap-2.5 lg:hidden w-fit">
+            <div className="h-8 w-8 rounded-xl overflow-hidden shadow-[0_0_0_1px_rgba(192,57,43,0.28)]">
+              <LogoMark className="h-full w-full" />
+            </div>
+            <span className="text-base font-semibold text-fg/90">gitlore</span>
+          </Link>
 
-              <motion.button
-                onClick={() => handleSignIn("google")}
-                disabled={loading !== null}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className={clsx(
-                  "group relative w-full inline-flex items-center justify-center gap-3 rounded-xl px-4 py-3.5 text-sm font-semibold transition-all overflow-hidden",
-                  "bg-white text-slate-900 ring-1 ring-slate-300/50 shadow-md",
-                  "hover:bg-slate-50 hover:ring-slate-400/60 hover:shadow-lg hover:shadow-slate-500/20",
-                  "focus-ring-glow disabled:opacity-50 disabled:cursor-not-allowed"
-                )}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-100/0 via-slate-100/50 to-slate-100/0 opacity-0 transition-opacity group-hover:opacity-100" />
-                <svg className="relative z-10 h-5 w-5 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  />
-                </svg>
-                <span className="relative z-10">Continue with Google</span>
-                {loading === "google" && (
-                  <div className="relative z-10 ml-2 h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-transparent" />
-                )}
-              </motion.button>
-            </motion.div>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className="mt-6 text-center text-xs leading-relaxed text-slate-500"
-            >
-              By signing in, you agree to our{" "}
-              <Link href="/terms" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2 transition-colors">
-                terms of service
-              </Link>{" "}
-              and{" "}
-              <Link href="/privacy" className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2 transition-colors">
-                privacy policy
-              </Link>
-              .
-            </motion.p>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.7 }}
-              className="mt-6 text-center"
-            >
-              <Link
-                href="/"
-                className="inline-flex items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-cyan-400 group"
-              >
-                <ArrowRight className="h-3 w-3 rotate-180 transition-transform group-hover:-translate-x-0.5" />
-                <span>Back to home</span>
-              </Link>
-            </motion.div>
+          {/* Heading */}
+          <div className="mb-8">
+            <h1 className="text-2xl font-semibold text-fg">Sign in</h1>
+            <p className="mt-1.5 text-sm text-fg/40">
+              Continue to your gitlore workspace
+            </p>
           </div>
+
+          {/* Auth buttons */}
+          <div className="space-y-2.5">
+            {/* GitHub — primary */}
+            <motion.button
+              onClick={() => handleSignIn("github")}
+              disabled={loading !== null}
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.985 }}
+              className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-fg/90 px-4 py-3 text-sm font-semibold text-canvas transition-all hover:bg-fg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading === "github" ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-canvas/20 border-t-canvas" />
+              ) : (
+                <GithubIcon className="h-4 w-4 shrink-0" />
+              )}
+              Continue with GitHub
+            </motion.button>
+
+            {/* Google — secondary */}
+            <motion.button
+              onClick={() => handleSignIn("google")}
+              disabled={loading !== null}
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.985 }}
+              className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-fg/12 bg-fg/[0.04] px-4 py-3 text-sm font-semibold text-fg/75 transition-all hover:bg-fg/[0.08] hover:border-fg/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading === "google" ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-fg/15 border-t-fg/60" />
+              ) : (
+                GoogleIcon
+              )}
+              Continue with Google
+            </motion.button>
+          </div>
+
+          {/* Divider */}
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-fg/8" />
+            <span className="text-[10px] text-fg/25 tracking-wide">secure OAuth · no passwords stored</span>
+            <div className="h-px flex-1 bg-fg/8" />
+          </div>
+
+          {/* Legal */}
+          <p className="text-center text-[11px] leading-relaxed text-fg/25">
+            By continuing you agree to our{" "}
+            <Link href="/terms" className="text-fg/40 underline underline-offset-2 hover:text-tomato-jam transition-colors">
+              terms
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="text-fg/40 underline underline-offset-2 hover:text-tomato-jam transition-colors">
+              privacy policy
+            </Link>
+            .
+          </p>
         </motion.div>
-      </motion.div>
+      </div>
     </main>
   );
 }
-

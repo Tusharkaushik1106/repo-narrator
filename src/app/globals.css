@@ -1,30 +1,198 @@
 @import "tailwindcss";
 
+/* ── Graffico brand tokens (CSS custom properties) ── */
 :root {
-  --rn-bg-main: #0b0f19; 
-  --rn-bg-card: #131b2c; 
-  --rn-bg-overlay: rgba(19, 27, 44, 0.7);
+  /* ── Brand palette — fixed, never themed ── */
+  --color-tomato-jam:    #c0392b;
+  --color-almond-cream:  #e7d7c1;
+  --color-metallic-gold: #d4af37;
+  --color-ink-black:     #101011;
+  --color-seppia-black:  #040f0f;
 
-  --rn-accent-primary-from: #22d3ee; 
-  --rn-accent-primary-to: #0ea5e9;
+  /*
+   * Font family tokens — chain through next/font CSS vars so the
+   * browser uses the optimised, preloaded font file. Static strings
+   * act as fallbacks during SSR / before hydration.
+   */
+  --font-shrikhand: var(--font-display, 'Shrikhand', serif);
+  --font-work-sans: var(--font-ui, 'Work Sans', system-ui, sans-serif);
+  --font-fraktion:  var(--font-code, 'PP Fraktion Mono', 'JetBrains Mono', monospace);
+  --font-editorial: 'PP Editorial New', Georgia, serif;   /* licensed — swap when available */
+  --default-font-family: var(--font-work-sans);
 
-  --rn-accent-secondary-from: #a855f7; 
-  --rn-accent-secondary-to: #ec4899; 
+  /* ── Easing curves (design spec §6.4) ── */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);  /* general ease-in-out */
+  --ease-reveal:   cubic-bezier(0, 0, 0.2, 1);     /* ease-out for enters/reveals */
 
-  --rn-text-primary: #f8fafc; 
-  --rn-text-secondary: #94a3b8; 
+  /* ═══════════════════════════════════════════════════════
+   * SEMANTIC THEME TOKENS — light mode (default)
+   * Override all of these in .dark for dark theme.
+   * ═══════════════════════════════════════════════════════ */
 
-  --rn-success: #14b8a6; 
-  --rn-warning: #fbbf24; 
-  --rn-error: #fb7185; 
+  /* Canvas — page-level background */
+  --canvas: #faf7f2;
+
+  /* Foreground — text, borders, interactive tints */
+  --fg: #101011;
+
+  /* Surface gradients (glass effect) */
+  --surface-gradient: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(255,255,255,0.78));
+  --elevated-gradient: linear-gradient(135deg, rgba(255,255,255,0.97), rgba(255,255,255,0.93));
+
+  /* Decorative bg layer opacity — tone down in light mode */
+  --blob-opacity-1: 0.10;
+  --blob-opacity-2: 0.06;
+  --noise-opacity:  0.04;
+
+  /* ── Cinematic background layers ── */
+  --bg-radial: radial-gradient(ellipse at 50% 30%, #faf7f2 0%, #f0ebe0 50%, #e0d8c8 100%);
+  --vignette:  radial-gradient(ellipse at 50% 40%, transparent 25%, rgba(0,0,0,0.08) 100%);
+}
+
+/* ── Dark theme overrides ── */
+.dark {
+  --canvas: #101011;
+  --fg:     #e7d7c1;
+
+  --surface-gradient: linear-gradient(135deg, rgba(16,16,17,0.92), rgba(16,16,17,0.78));
+  --elevated-gradient: linear-gradient(135deg, rgba(16,16,17,0.97), rgba(16,16,17,0.93));
+
+  --blob-opacity-1: 0.20;
+  --blob-opacity-2: 0.10;
+  --noise-opacity:  0.03;
+
+  /* ── Cinematic background layers ── */
+  --bg-radial: radial-gradient(ellipse at 50% 30%, #1e1914 0%, #0f0d0b 50%, #050403 100%);
+  --vignette:  radial-gradient(ellipse at 50% 40%, transparent 25%, rgba(0,0,0,0.78) 100%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * SECTION ENVIRONMENT TOKENS
+ *
+ * Applied via data-section="dark|light|neutral" on section wrapper components.
+ * Because these target the section element directly (not an ancestor),
+ * they win over any :root or .dark rules for that element and all its descendants.
+ *
+ * All Tailwind utilities that reference --canvas, --fg, --surface-gradient,
+ * --elevated-gradient, etc. automatically adapt when a section overrides them —
+ * no component changes required.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Dark Section — hero, CTA, cinematic ── */
+[data-section="dark"] {
+  /* Core theme tokens (drives all text-fg, bg-canvas, border-fg/* utilities) */
+  --canvas:            #0c0a09;
+  --fg:                #e7d7c1;
+
+  /* Glass surface backgrounds */
+  --surface-gradient:  linear-gradient(135deg, rgba(22,19,16,0.92), rgba(16,14,11,0.82));
+  --elevated-gradient: linear-gradient(135deg, rgba(26,23,20,0.97), rgba(20,17,14,0.94));
+
+  /* Cinematic layer values.
+   * --bg-radial is transparent: sections don't each paint a centered radial
+   * (stacking 7+ sections would create visible stripe seams). The single
+   * page-level bg-radial in layout.tsx covers the whole page uniformly.
+   * Per-section vignette + atmosphere blobs still add local depth. */
+  --bg-radial:         transparent;
+  --vignette:          radial-gradient(ellipse at 50% 40%, transparent 25%, rgba(0,0,0,0.75) 100%);
+  --noise-opacity:     0.040;
+  --blob-opacity-1:    0.22;
+  --blob-opacity-2:    0.12;
+
+  /* Semantic aliases — use via var(--bg-primary) / var(--text-primary) etc. */
+  --bg-primary:        #0c0a09;
+  --bg-secondary:      rgba(22,19,16,0.92);
+  --text-primary:      #e7d7c1;
+  --text-secondary:    rgba(231,215,193,0.60);
+  --accent:            #c0392b;
+  --border:            rgba(231,215,193,0.08);
+  --card-bg:           rgba(22,19,16,0.85);
+}
+
+/* ── 2. Light Section — warm paper, readable, cream/beige ── */
+[data-section="light"] {
+  /* Core theme tokens */
+  --canvas:            #f5f0e8;
+  --fg:                #1e1a16;
+
+  /* Glass surface backgrounds */
+  --surface-gradient:  linear-gradient(135deg, rgba(255,253,249,0.96), rgba(245,240,232,0.88));
+  --elevated-gradient: linear-gradient(135deg, rgba(255,254,252,0.99), rgba(250,247,242,0.97));
+
+  /* Background layer values */
+  --bg-radial:         radial-gradient(ellipse at 50% 0%, #faf7f2 0%, #f5f0e8 60%, #ede5d8 100%);
+  --vignette:          radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(0,0,0,0.04) 100%);
+  --noise-opacity:     0.022;
+  --blob-opacity-1:    0.06;
+  --blob-opacity-2:    0.04;
+
+  /* Semantic aliases */
+  --bg-primary:        #f5f0e8;
+  --bg-secondary:      rgba(255,253,249,0.96);
+  --text-primary:      #1e1a16;
+  --text-secondary:    rgba(30,26,22,0.60);
+  --accent:            #c0392b;
+  --border:            rgba(30,26,22,0.10);
+  --card-bg:           rgba(255,253,249,0.92);
+}
+
+/* ── 3. Neutral Section — soft gray, forms, long-form content ── */
+[data-section="neutral"] {
+  /* Core theme tokens */
+  --canvas:            #f4f3f1;
+  --fg:                #2c2a28;
+
+  /* Glass surface backgrounds */
+  --surface-gradient:  linear-gradient(135deg, rgba(255,255,255,0.92), rgba(244,243,241,0.85));
+  --elevated-gradient: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(249,249,248,0.96));
+
+  /* Background layer values */
+  --bg-radial:         radial-gradient(ellipse at 50% 0%, #f9f8f7 0%, #f4f3f1 60%, #eeecea 100%);
+  --vignette:          none;
+  --noise-opacity:     0.018;
+  --blob-opacity-1:    0.04;
+  --blob-opacity-2:    0.03;
+
+  /* Semantic aliases */
+  --bg-primary:        #f4f3f1;
+  --bg-secondary:      rgba(255,255,255,0.92);
+  --text-primary:      #2c2a28;
+  --text-secondary:    rgba(44,42,40,0.55);
+  --accent:            #c0392b;
+  --border:            rgba(44,42,40,0.08);
+  --card-bg:           rgba(255,255,255,0.88);
 }
 
 @theme inline {
-  --color-background: var(--rn-bg-main);
-  --color-foreground: var(--rn-text-primary);
+  /* ── Semantic tokens — resolve via CSS var so they change with theme ── */
+  --color-canvas: var(--canvas);
+  --color-fg:     var(--fg);
 
   --font-sans: var(--font-ui);
   --font-mono: var(--font-code);
+
+  /* ── Graffico UI Kit brand tokens (static) ── */
+  --color-tomato-jam:    #c0392b;
+  --color-almond-cream:  #e7d7c1;
+  --color-metallic-gold: #d4af37;
+  --color-ink-black:     #101011;
+  --color-seppia-black:  #040f0f;
+
+  /*
+   * Font variable bridges — Tailwind generates e.g.
+   *   .font-shrikhand { font-family: var(--font-display); }
+   * so utilities always point at the next/font-loaded variable.
+   */
+  --font-shrikhand: var(--font-display);
+  --font-work-sans: var(--font-ui);
+  --font-fraktion:  var(--font-code);
+  --font-editorial: 'PP Editorial New', Georgia, serif;
+
+  /* ── Custom animation tokens ── */
+  --animate-emoji-bounce: emoji-bounce 2s ease-in-out infinite;
+  --animate-arrow-bounce: arrow-bounce 1s ease-in-out infinite;
+  --animate-scroll-dot:   scroll-dot 2s ease-in-out infinite;
+  --animate-swipe-up:     swipe-up 2s ease-in-out infinite;
 }
 
 html {
@@ -33,75 +201,61 @@ html {
 }
 
 body {
-  background-color: var(--rn-bg-main);
-  color: var(--rn-text-primary);
-  font-family: var(--font-ui), system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  background-color: var(--canvas);
+  color: var(--fg);
+  font-family: var(--font-ui, 'Work Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
-.bg-rn-gradient {
-  background:
-    radial-gradient(circle at 0% 0%, rgba(34, 211, 238, 0.18), transparent 55%),
-    radial-gradient(circle at 100% 0%, rgba(168, 85, 247, 0.2), transparent 55%),
-    radial-gradient(circle at 50% 100%, rgba(236, 72, 153, 0.18), transparent 55%),
-    radial-gradient(circle at 10% 80%, rgba(56, 189, 248, 0.12), transparent 55%),
-    radial-gradient(circle at 90% 60%, rgba(94, 234, 212, 0.12), transparent 55%),
-    radial-gradient(circle at 50% 10%, rgba(15, 23, 42, 1), #020617);
+::selection {
+  background-color: #c0392b;
+  color: #ffffff;
 }
 
+/*
+ * .bg-rn-gradient — retired.
+ * Background is now implemented as fixed layered divs in RootLayout
+ * (noise + two blur-3xl gradient blobs). See src/app/layout.tsx.
+ */
+
+/* ── Glass panel (deprecated — use .gf-card in new components) ── */
 .glass-panel {
-  background: linear-gradient(
-      135deg,
-      rgba(15, 23, 42, 0.9),
-      rgba(15, 23, 42, 0.7)
-    );
-  border-radius: 1.25rem;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: var(--surface-gradient);
+  border-radius: 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
   box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.9),
-    0 0 20px rgba(34, 211, 238, 0.12),
-    0 0 40px rgba(168, 85, 247, 0.15);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+    0 0 0 1px color-mix(in srgb, var(--canvas) 90%, transparent),
+    0 0 20px rgba(192, 57, 43, 0.08),
+    0 0 40px rgba(212, 175, 55, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   transform: translateZ(0);
   will-change: transform;
   contain: layout style paint;
 }
 
-.pill-accent-border {
-  border-radius: 999px;
-  border-width: 1px;
-  border-style: solid;
-  border-image: linear-gradient(
-      120deg,
-      rgba(34, 211, 238, 0.9),
-      rgba(168, 85, 247, 0.9),
-      rgba(236, 72, 153, 0.9)
-    )
-    1;
-}
-
+/* ── Focus ring (tomato-jam glow) ── */
 .focus-ring-glow:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 1),
-    0 0 0 2px rgba(34, 211, 238, 0.6),
-    0 0 40px rgba(34, 211, 238, 0.5);
+    0 0 0 1px var(--canvas),
+    0 0 0 2px rgba(192, 57, 43, 0.6),
+    0 0 40px rgba(192, 57, 43, 0.4);
 }
 
+/* ── Markdown body (file summary panel) ── */
 .markdown-body {
   line-height: 1.6;
-  color: #e2e8f0;
+  color: color-mix(in srgb, var(--fg) 80%, transparent);
 }
 
 .markdown-body h2 {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #7dd3fc;
+  color: #c0392b;
   margin-top: 0.75rem;
   margin-bottom: 0.5rem;
   letter-spacing: 0.025em;
@@ -115,7 +269,7 @@ body {
   font-size: 0.8125rem;
   line-height: 1.65;
   margin-bottom: 0.5rem;
-  color: #cbd5e1;
+  color: color-mix(in srgb, var(--fg) 70%, transparent);
 }
 
 .markdown-body ul {
@@ -129,35 +283,141 @@ body {
   margin-bottom: 0.4rem;
   font-size: 0.8125rem;
   line-height: 1.6;
-  color: #cbd5e1;
+  color: color-mix(in srgb, var(--fg) 70%, transparent);
 }
 
 .markdown-body li strong {
-  color: #7dd3fc;
+  color: #c0392b;
   font-weight: 600;
 }
 
 .markdown-body code {
-  background-color: rgba(15, 23, 42, 0.6);
+  background-color: color-mix(in srgb, var(--canvas) 60%, transparent);
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   font-size: 0.75rem;
   font-family: var(--font-mono), monospace;
-  color: #a5b4fc;
+  color: color-mix(in srgb, var(--fg) 60%, transparent);
 }
 
+/* ── Typography utility classes ── */
+.font-shrikhand { font-family: var(--font-shrikhand, 'Shrikhand', serif); font-weight: 400; font-style: normal; }
+.font-fraktion  { font-family: var(--font-fraktion, 'JetBrains Mono', monospace); }
+.font-editorial { font-family: var(--font-editorial, Georgia, serif); }
+
+/* ── Keyframe animations ── */
 @keyframes rotate-gradient {
-  from {
-    transform: rotate(0deg) translateZ(0);
-  }
-  to {
-    transform: rotate(360deg) translateZ(0);
+  from { transform: rotate(0deg) translateZ(0); }
+  to   { transform: rotate(360deg) translateZ(0); }
+}
+
+@keyframes shimmer-border {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes emoji-bounce {
+  0%, 100% { transform: translateY(0) rotate(var(--rotation, 0deg)); }
+  50%       { transform: translateY(-10px) rotate(var(--rotation, 0deg)); }
+}
+
+@keyframes arrow-bounce {
+  0%, 100% { transform: translate(0); }
+  50%       { transform: translate(4px); }
+}
+
+@keyframes scroll-dot {
+  0%   { opacity: 0; transform: translate(-50%, 0.5rem); }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, 2rem); }
+}
+
+@keyframes swipe-up {
+  0%   { opacity: 0; transform: translate(-50%, 1.5rem); }
+  20%  { opacity: 1; transform: translate(-50%, 1.2rem); }
+  80%  { opacity: 1; transform: translate(-50%, -1.2rem); }
+  100% { opacity: 0; transform: translate(-50%, -1.5rem); }
+}
+
+/* ── Interaction system keyframes ── */
+@keyframes gf-spin  { to { transform: rotate(360deg); } }
+@keyframes gf-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ── 3D scroll carousel ── */
+.js-work {
+  transform:
+    rotateY(calc(var(--progress, 0) * -20deg))
+    translate3d(
+      calc(var(--progress, 0) * (50vw + 100%) - 50%),
+      calc(var(--y, 0) * 50% - 50%),
+      calc(var(--progress, 0) * var(--progress, 0) * -5rem)
+    )
+    scale(var(--size, 0.85))
+    translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
+  transform-style: preserve-3d;
+  isolation: isolate;
+}
+
+@media (max-width: 767px) {
+  .js-work {
+    transform:
+      rotateY(calc(var(--progress, 0) * -20deg))
+      translate3d(
+        calc(var(--progress, 0) * (50vw + 100%) - 50%),
+        calc(var(--y, 0) * 100% - 50%),
+        calc(var(--progress, 0) * var(--progress, 0) * -5rem)
+      )
+      translateZ(0);
   }
 }
 
+.js-work-word {
+  transform: translate3d(calc(var(--progress, 0) * (80vw + 150%) - 50%), 0, 0);
+  will-change: transform;
+}
+
+/* ── Letter scene animation ── */
+.s__scene__letter {
+  --head:  calc((var(--progress, 0) - 0.5) * -2);
+  --ahead: calc(var(--head) * var(--head));
+  transform:
+    rotateY(calc(var(--head) * -10deg * var(--state, 1)))
+    translate3d(
+      calc(var(--head) * 50vw * var(--state, 1)),
+      calc(var(--iy, 0) * 50% * var(--ahead) * var(--state, 1)),
+      0
+    );
+}
+
+/* ── Perspective utilities ── */
+.perspective-40rem { perspective: 40rem; }
+.transform-style-3d { transform-style: preserve-3d; }
+
+/* ── Accordion (CSS grid technique) ── */
+.accordion-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+.accordion-body.open {
+  grid-template-rows: 1fr;
+}
+.accordion-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Scrollbar ── */
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: rgba(100, 116, 139, 0.5) rgba(15, 23, 42, 0.3);
+  scrollbar-color:
+    color-mix(in srgb, var(--fg) 20%, transparent)
+    color-mix(in srgb, var(--canvas) 30%, transparent);
   transform: translateZ(0);
   -webkit-overflow-scrolling: touch;
   will-change: scroll-position;
@@ -170,33 +430,34 @@ body {
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.3);
+  background: color-mix(in srgb, var(--canvas) 70%, transparent);
   border-radius: 3px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.5);
+  background: color-mix(in srgb, var(--fg) 20%, transparent);
   border-radius: 3px;
   transition: background 0.2s ease;
   will-change: background;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.7);
+  background: color-mix(in srgb, var(--fg) 40%, transparent);
 }
 
 .scrollbar-thumb-slate-700::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.6);
+  background: color-mix(in srgb, var(--fg) 15%, transparent);
 }
 
 .scrollbar-thumb-slate-700::-webkit-scrollbar-thumb:hover {
-  background: rgba(71, 85, 105, 0.8);
+  background: color-mix(in srgb, var(--fg) 25%, transparent);
 }
 
 .scrollbar-track-slate-900::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+  background: color-mix(in srgb, var(--canvas) 50%, transparent);
 }
 
+/* ── GPU acceleration hint ── */
 .transform-gpu {
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
@@ -214,17 +475,25 @@ body {
   backdrop-filter: blur(8px);
 }
 
+/* ── Motion preferences ── */
 @media (prefers-reduced-motion: no-preference) {
   * {
     scroll-behavior: smooth;
   }
-  
+
   .scroll-pause-animations {
     animation-play-state: paused;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .js-work,
+  .s__scene__letter {
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
   * {
     scroll-behavior: auto;
     animation-duration: 0.01ms !important;
@@ -233,6 +502,7 @@ body {
   }
 }
 
+/* ── Scroll performance hints ── */
 [class*="overflow-y-auto"],
 [class*="overflow-y-scroll"],
 [class*="overflow-auto"] {
@@ -242,20 +512,211 @@ body {
   contain: layout style paint;
 }
 
+/*
+ * ── Base typography defaults ────────────────────────────────────
+ * These are element-level rules (specificity 0-0-1).
+ * Any Tailwind utility class (specificity 0-1-0) overrides them,
+ * so component-level overrides like `font-sans` or `text-xl` always
+ * win. These rules only fire where no explicit font class is set.
+ * ──────────────────────────────────────────────────────────────── */
+@layer base {
+  h1, h2 {
+    font-family: var(--font-work-sans, 'Work Sans', system-ui, sans-serif);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+
+  h3, h4, h5, h6 {
+    font-family: var(--font-work-sans, 'Work Sans', system-ui, sans-serif);
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  p {
+    line-height: 1.65;
+  }
+
+  code, kbd, samp {
+    font-family: var(--font-fraktion, 'JetBrains Mono', monospace);
+    font-size: 0.875em;
+  }
+
+  pre {
+    font-family: var(--font-fraktion, 'JetBrains Mono', monospace);
+  }
+
+  pre code {
+    font-size: 1em;   /* reset nested code inside pre */
+  }
+
+  a {
+    color: #c0392b;
+    text-decoration-color: transparent;
+    transition: opacity 0.2s ease;
+  }
+
+  @media (hover: hover) {
+    a:hover {
+      opacity: 0.8;
+    }
+  }
+}
+
 @layer utilities {
   .glass-card {
-    @apply backdrop-blur-xl bg-[#0a0a0a]/80 border border-white/10 shadow-2xl;
-    background-image: linear-gradient(to bottom right, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.2));
+    border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 0 0 1px transparent, 0 8px 32px rgba(0,0,0,0.2);
+    background: var(--surface-gradient);
   }
+
   .gradient-border {
     position: relative;
     border-radius: 1.5rem;
-    background: linear-gradient(to bottom right, #3b82f6, #8b5cf6);
+    background: linear-gradient(to bottom right, #c0392b, #d4af37);
     padding: 1px;
   }
   .gradient-border > * {
     position: relative;
     z-index: 1;
   }
+
+  /* ── Graffico UI Kit component primitives ── */
+
+  /* Glass card — primary card component */
+  .gf-card {
+    background: var(--surface-gradient);
+    border-radius: 1.5rem;
+    border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    overflow: hidden;
+  }
+
+  /* CTA card — tomato-jam fill */
+  .gf-card-cta {
+    background-color: #c0392b;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Noise texture overlay helper */
+  .gf-noise::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('/noise.svg');
+    opacity: var(--noise-opacity, 0.04);
+    pointer-events: none;
+    border-radius: inherit;
+  }
+
+  /* Pill badge */
+  .gf-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(192,57,43,0.3);
+    background: rgba(192,57,43,0.08);
+    padding: 0.25rem 0.875rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #c0392b;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Divider with dot centres */
+  .gf-divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .gf-divider::before,
+  .gf-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: color-mix(in srgb, var(--fg) 10%, transparent);
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+   * INTERACTION SYSTEM — shared animation utilities (design §6)
+   * Use these on any element instead of ad-hoc Tailwind transitions.
+   * ───────────────────────────────────────────────────────────── */
+
+  /* 200ms — component hover: color, bg, border, shadow, transform */
+  .gf-transition {
+    transition-property: color, background-color, border-color,
+      text-decoration-color, fill, stroke, opacity,
+      box-shadow, transform, filter, backdrop-filter;
+    transition-timing-function: var(--ease-standard);
+    transition-duration: 200ms;
+  }
+
+  /* 150ms — fast micro-feedback: color, border, opacity only */
+  .gf-transition-fast {
+    transition-property: color, background-color, border-color, opacity;
+    transition-timing-function: var(--ease-standard);
+    transition-duration: 150ms;
+  }
+
+  /* 500ms — large reveals and entrance animations */
+  .gf-transition-slow {
+    transition-property: color, background-color, border-color,
+      text-decoration-color, fill, stroke, opacity,
+      box-shadow, transform, filter, backdrop-filter;
+    transition-timing-function: var(--ease-reveal);
+    transition-duration: 500ms;
+  }
+
+  /* Hover lift — card/panel hover */
+  .gf-hover-lift {
+    transition-property: transform, box-shadow;
+    transition-timing-function: var(--ease-standard);
+    transition-duration: 300ms;
+  }
+
+  /* Standard focus ring */
+  .gf-focus-ring {
+    outline: none;
+  }
+  .gf-focus-ring:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--canvas),
+      0 0 0 4px rgba(192, 57, 43, 0.5);
+  }
+
+  /* Loading spinner */
+  .gf-spinner {
+    display: inline-block;
+    border-radius: 9999px;
+    border: 3px solid color-mix(in srgb, var(--fg) 15%, transparent);
+    border-top-color: #c0392b;
+    animation: gf-spin 0.7s linear infinite;
+  }
+  .gf-spinner      { width: 1.25rem; height: 1.25rem; }
+  .gf-spinner-sm   { width: 0.875rem; height: 0.875rem; border-width: 2px; }
+  .gf-spinner-lg   { width: 2rem;    height: 2rem;    border-width: 4px; }
+
+  /* Skeleton loader */
+  .gf-skeleton {
+    background: color-mix(in srgb, var(--fg) 8%, transparent);
+    animation: gf-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    border-radius: 0.5rem;
+  }
+  .gf-skeleton-pill { border-radius: 9999px; }
 }
 
+/* gf-hover-lift hover rule — outside @layer so @media nesting is valid */
+@media (hover: hover) {
+  .gf-hover-lift:hover {
+    transform: translateY(-0.5rem);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  }
+}

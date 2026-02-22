@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -18,13 +18,23 @@ export function OmniChat() {
   const { analysis } = useRepoContext();
   const { currentFile } = useFileContext();
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, streamingContent]);
+  }, [messages, streamingContent, scrollToBottom]);
+
+  // Close panel on Escape
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,11 +125,12 @@ export function OmniChat() {
 
   return (
     <>
+      {/* Floating action button */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-5 right-5 z-[9999] inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-tr from-cyan-400 to-fuchsia-500 text-slate-950 shadow-lg shadow-cyan-500/40 focus:outline-none transform-gpu"
-        style={{ position: 'fixed' }}
+        className="fixed bottom-5 right-5 z-[9999] inline-flex h-12 w-12 items-center justify-center rounded-full bg-tomato-jam text-fg shadow-lg shadow-tomato-jam/40 focus:outline-none transform-gpu transition-transform hover:scale-105 active:scale-95"
+        style={{ position: "fixed" }}
       >
         <MessageCircle className="h-5 w-5" />
       </button>
@@ -127,18 +138,19 @@ export function OmniChat() {
       <AnimatePresence>
         {open && (
           <motion.section
-            className="fixed bottom-20 right-5 z-40 w-[420px] max-w-[calc(100vw-2.5rem)] rounded-2xl border border-slate-700/80 bg-slate-950/95 p-4 shadow-2xl shadow-slate-900/80 backdrop-blur-xl"
-            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            className="fixed bottom-20 right-5 z-40 w-[420px] max-w-[calc(100vw-2.5rem)] rounded-2xl border border-fg/10 bg-canvas/95 p-4 shadow-2xl shadow-black/80 backdrop-blur-xl"
+            initial={{ opacity: 0, y: 20, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 24, scale: 0.96 }}
-            transition={{ type: "spring", stiffness: 120, damping: 18 }}
+            exit={{ opacity: 0, y: 20, scale: 0.96 }}
+            transition={{ duration: 0.25, ease: [0, 0, 0.2, 1] }}
           >
-            <header className="mb-3 flex items-center justify-between gap-2 border-b border-slate-800/50 pb-2">
+            {/* Header */}
+            <header className="mb-3 flex items-center justify-between gap-2 border-b border-fg/8 pb-2">
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-cyan-300">
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-tomato-jam">
                   gitlore Chat
                 </p>
-                <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                <p className="text-[11px] text-fg/40 mt-0.5 truncate">
                   {currentFile?.path
                     ? `Context: ${currentFile.path}`
                     : "Ask about files, flows, or architecture"}
@@ -147,28 +159,33 @@ export function OmniChat() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-900/80 text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100"
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-fg/5 text-fg/50 transition-colors hover:bg-fg/10 hover:text-fg"
               >
                 <X className="h-4 w-4" />
               </button>
             </header>
 
-            <div className="mb-3 max-h-[400px] space-y-3 overflow-y-auto rounded-xl bg-slate-950/60 p-3 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent transform-gpu">
+            {/* Messages */}
+            <div className="mb-3 max-h-[400px] space-y-3 overflow-y-auto rounded-xl bg-canvas/60 p-3 scrollbar-thin scrollbar-thumb-fg scrollbar-track-transparent transform-gpu">
               {messages.length === 0 && !streamingContent && (
-                <div className="space-y-2 text-xs text-slate-400">
-                  <p className="font-medium text-slate-300">Try asking:</p>
+                <div className="space-y-2 text-xs text-fg/40">
+                  <p className="font-medium text-fg/60">Try asking:</p>
                   <ul className="space-y-1.5 pl-4 list-disc">
                     <li>&ldquo;Explain the authentication flow&rdquo;</li>
                     <li>&ldquo;How does this file work?&rdquo;</li>
                     <li>&ldquo;What are the main components?&rdquo;</li>
                   </ul>
                   {currentFile?.path && (
-                    <p className="mt-3 pt-3 border-t border-slate-800 text-cyan-300/80">
-                      💡 I can see you&apos;re viewing: <code className="text-[10px] bg-slate-900/50 px-1.5 py-0.5 rounded">{currentFile.path}</code>
+                    <p className="mt-3 pt-3 border-t border-fg/8 text-tomato-jam/80">
+                      💡 I can see you&apos;re viewing:{" "}
+                      <code className="text-[10px] bg-canvas px-1.5 py-0.5 rounded text-fg/70">
+                        {currentFile.path}
+                      </code>
                     </p>
                   )}
                 </div>
               )}
+
               {messages.map((m) => (
                 <motion.div
                   key={m.id}
@@ -176,46 +193,46 @@ export function OmniChat() {
                   animate={{ opacity: 1, y: 0 }}
                   className={
                     m.role === "user"
-                      ? "ml-auto max-w-[85%] rounded-xl bg-gradient-to-br from-cyan-500/20 to-sky-500/20 border border-cyan-500/30 px-3 py-2 text-left"
-                      : "mr-auto max-w-[85%] rounded-xl bg-slate-900/80 border border-slate-700/50 px-3 py-2 text-left"
+                      ? "ml-auto max-w-[85%] rounded-xl bg-tomato-jam/15 border border-tomato-jam/25 px-3 py-2 text-left"
+                      : "mr-auto max-w-[85%] rounded-xl bg-fg/[0.03] border border-fg/10 px-3 py-2 text-left"
                   }
                 >
                   {m.role === "user" ? (
-                    <p className="text-xs text-cyan-100 whitespace-pre-wrap break-words">
+                    <p className="text-xs text-fg whitespace-pre-wrap break-words">
                       {m.content}
                     </p>
                   ) : (
-                    <div className="text-xs text-slate-200 prose prose-invert prose-sm max-w-none">
+                    <div className="text-xs text-fg/80 prose prose-invert prose-sm max-w-none">
                       <ReactMarkdown
                         components={{
                           p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-                          h1: ({ children }) => <h1 className="text-sm font-semibold mb-2 text-cyan-300">{children}</h1>,
-                          h2: ({ children }) => <h2 className="text-xs font-semibold mb-1.5 mt-3 text-cyan-300">{children}</h2>,
-                          h3: ({ children }) => <h3 className="text-xs font-medium mb-1 mt-2 text-sky-300">{children}</h3>,
+                          h1: ({ children }) => <h1 className="text-sm font-semibold mb-2 text-tomato-jam">{children}</h1>,
+                          h2: ({ children }) => <h2 className="text-xs font-semibold mb-1.5 mt-3 text-tomato-jam">{children}</h2>,
+                          h3: ({ children }) => <h3 className="text-xs font-medium mb-1 mt-2 text-metallic-gold">{children}</h3>,
                           ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
                           ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
                           li: ({ children }) => <li className="leading-relaxed">{children}</li>,
                           code: ({ children, className }) => {
                             const isInline = !className;
                             return isInline ? (
-                              <code className="bg-slate-800/60 text-cyan-300 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                              <code className="bg-canvas/60 text-tomato-jam px-1.5 py-0.5 rounded text-[10px] font-mono">
                                 {children}
                               </code>
                             ) : (
-                              <code className="block bg-slate-900/80 p-2 rounded-lg text-[10px] font-mono text-slate-300 overflow-x-auto my-2">
+                              <code className="block bg-canvas p-2 rounded-lg text-[10px] font-mono text-fg/70 overflow-x-auto my-2">
                                 {children}
                               </code>
                             );
                           },
                           pre: ({ children }) => (
-                            <pre className="bg-slate-900/80 p-2 rounded-lg text-[10px] font-mono text-slate-300 overflow-x-auto my-2">
+                            <pre className="bg-canvas p-2 rounded-lg text-[10px] font-mono text-fg/70 overflow-x-auto my-2">
                               {children}
                             </pre>
                           ),
-                          strong: ({ children }) => <strong className="font-semibold text-slate-100">{children}</strong>,
-                          em: ({ children }) => <em className="italic text-slate-300">{children}</em>,
+                          strong: ({ children }) => <strong className="font-semibold text-fg">{children}</strong>,
+                          em: ({ children }) => <em className="italic text-fg/70">{children}</em>,
                           blockquote: ({ children }) => (
-                            <blockquote className="border-l-2 border-cyan-500/50 pl-3 my-2 italic text-slate-300">
+                            <blockquote className="border-l-2 border-tomato-jam/40 pl-3 my-2 italic text-fg/60">
                               {children}
                             </blockquote>
                           ),
@@ -227,18 +244,19 @@ export function OmniChat() {
                   )}
                 </motion.div>
               ))}
+
               {streamingContent && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="mr-auto max-w-[85%] rounded-xl bg-slate-900/80 border border-slate-700/50 px-3 py-2 text-left"
+                  className="mr-auto max-w-[85%] rounded-xl bg-fg/[0.03] border border-fg/10 px-3 py-2 text-left"
                 >
-                  <div className="text-xs text-slate-200 prose prose-invert prose-sm max-w-none">
+                  <div className="text-xs text-fg/80 prose prose-invert prose-sm max-w-none">
                     <ReactMarkdown
                       components={{
                         p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
                         code: ({ children }) => (
-                          <code className="bg-slate-800/60 text-cyan-300 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                          <code className="bg-canvas/60 text-tomato-jam px-1.5 py-0.5 rounded text-[10px] font-mono">
                             {children}
                           </code>
                         ),
@@ -247,15 +265,16 @@ export function OmniChat() {
                       {streamingContent}
                     </ReactMarkdown>
                   </div>
-                  <span className="inline-block w-2 h-3 bg-cyan-400 animate-pulse ml-1" />
+                  <span className="inline-block w-2 h-3 bg-tomato-jam animate-pulse ml-1" />
                 </motion.div>
               )}
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Input */}
             <form onSubmit={handleSend} className="flex items-center gap-2">
               <input
-                className="flex-1 rounded-lg bg-slate-900/90 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all"
+                className="flex-1 rounded-lg bg-canvas/90 px-3 py-2 text-xs text-fg placeholder:text-fg/25 outline-none focus:ring-2 focus:ring-tomato-jam/40 transition-all"
                 placeholder="Ask about the code..."
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -264,7 +283,7 @@ export function OmniChat() {
               <button
                 type="submit"
                 disabled={sending || !draft.trim()}
-                className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-sky-500 px-3 py-2 text-xs font-medium text-slate-950 transition-all hover:from-cyan-400 hover:to-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center justify-center rounded-lg bg-tomato-jam px-3 py-2 text-xs font-medium text-fg transition-all hover:bg-tomato-jam/80 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -279,5 +298,3 @@ export function OmniChat() {
     </>
   );
 }
-
-

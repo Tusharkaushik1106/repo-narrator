@@ -6,11 +6,13 @@ import { useEffect, useState } from "react";
 import { useRepoContext } from "@/context/RepoContext";
 import { AlertCircle } from "lucide-react";
 import { signIn, useSession } from "next-auth/react";
+import { Button } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 const steps = [
-  { id: "cloning", label: "Cloning repository" },
-  { id: "parsing", label: "Parsing & mapping files" },
-  { id: "vectorizing", label: "Vectorizing & summarizing" },
+  { id: "cloning",      label: "Cloning repository" },
+  { id: "parsing",      label: "Parsing & mapping files" },
+  { id: "vectorizing",  label: "Vectorizing & summarizing" },
   { id: "architecting", label: "Architecting neural map" },
 ] as const;
 
@@ -52,7 +54,7 @@ export function NeuralLoadingBay() {
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          
+
           if (res.status === 429) {
             const retryAfter = data.retryAfter || 60;
             throw new Error(
@@ -68,7 +70,7 @@ export function NeuralLoadingBay() {
         if (cancelled) return;
 
         window.dispatchEvent(new CustomEvent("usage-updated"));
-        
+
         finishAnalysis(json);
         router.push("/dashboard");
       } catch (err: unknown) {
@@ -91,183 +93,212 @@ export function NeuralLoadingBay() {
     };
   }, [analysis?.repoUrl, failAnalysis, finishAnalysis, router, status]);
 
-  
+  /* ── Auth redirect splash ── */
   if (status === "error" && error) {
     if (error.toLowerCase().includes("unauthorized") || error.toLowerCase().includes("401")) {
       return (
-        <main className="flex min-h-dvh items-center justify-center px-4 py-10 sm:px-8 lg:px-16">
-          <div className="glass-panel relative w-full max-w-4xl px-6 py-8 sm:px-10 sm:py-10">
-            <div className="relative z-10 space-y-6 text-center">
-              <p className="text-sm text-slate-400">Redirecting to signup...</p>
-            </div>
-          </div>
+        <main className="flex min-h-dvh items-center justify-center px-4">
+          <p className="text-sm text-fg/40">Redirecting to sign in…</p>
         </main>
       );
     }
 
+    /* ── Error state ── */
     return (
-      <main className="flex min-h-dvh items-center justify-center px-4 py-10 sm:px-8 lg:px-16">
-        <div className="glass-panel relative w-full max-w-4xl px-6 py-8 sm:px-10 sm:py-10">
-          <div className="absolute inset-0 rounded-[1.25rem] bg-[radial-gradient(circle_at_50%_0%,rgba(239,68,68,0.2),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(236,72,153,0.2),transparent_55%)] opacity-80 mix-blend-screen" />
-          
-          <div className="relative z-10 space-y-6">
-            <div className="text-center">
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-red-400">
-                Analysis Failed
+      <main className="flex min-h-dvh items-center justify-center px-6 py-16">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-lg"
+        >
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-tomato-jam/12 border border-tomato-jam/20">
+              <AlertCircle className="h-4 w-4 text-tomato-jam" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-tomato-jam/70">
+                Analysis failed
               </p>
-              <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
+              <h1 className="text-lg font-semibold text-fg">
                 Unable to analyze repository
               </h1>
             </div>
-            
-            <div className="rounded-lg border border-red-500/30 bg-red-950/20 p-6">
-              <p className="text-sm text-red-300 font-medium mb-2">Error:</p>
-              <p className="text-sm text-slate-300 whitespace-pre-wrap">{error}</p>
-            </div>
-            
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={() => {
-                  router.push("/");
-                }}
-                className="px-6 py-3 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-200 font-medium transition-colors"
-              >
-                Back to Home
-              </button>
-              <button
-                onClick={() => {
-                  if (analysis?.repoUrl) {
-                    router.push("/");
-                    setTimeout(() => {
-                      startAnalysis(analysis.repoUrl);
-                      router.push("/loading");
-                    }, 100);
-                  }
-                }}
-                className="px-6 py-3 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-slate-200 font-medium transition-colors"
-              >
-                Try Again
-              </button>
-            </div>
           </div>
-        </div>
+
+          <div className="mb-6 rounded-xl border border-tomato-jam/20 bg-tomato-jam/5 p-4">
+            <p className="text-xs font-semibold text-tomato-jam/60 mb-1.5">Error</p>
+            <p className="text-sm text-fg/65 leading-relaxed whitespace-pre-wrap">{error}</p>
+          </div>
+
+          <div className="flex gap-3">
+            <Button variant="primary" onClick={() => router.push("/")}>
+              Back to Home
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (analysis?.repoUrl) {
+                  router.push("/");
+                  setTimeout(() => {
+                    startAnalysis(analysis.repoUrl);
+                    router.push("/loading");
+                  }, 100);
+                }
+              }}
+            >
+              Try Again
+            </Button>
+          </div>
+        </motion.div>
       </main>
     );
   }
 
+  /* ── Loading state ── */
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10 sm:px-8 lg:px-16">
-      <div className="glass-panel relative w-full max-w-4xl px-6 py-8 sm:px-10 sm:py-10">
-        <div className="absolute inset-0 rounded-[1.25rem] bg-[radial-gradient(circle_at_50%_0%,rgba(56,189,248,0.28),transparent_55%),radial-gradient(circle_at_0%_100%,rgba(129,140,248,0.3),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(236,72,153,0.32),transparent_55%)] opacity-80 mix-blend-screen" />
+    <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-6 py-16">
 
-        <div className="relative z-10 grid gap-10 md:grid-cols-[3fr,2fr]">
-          <section className="space-y-6">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-sky-300">
-                Neural Loading Bay
-              </p>
-              <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
-                Mapping the deep sea of{" "}
-                <span className="text-cyan-300">
-                  {analysis?.name ? analysis.name : "your repository"}
-                </span>
-                .
-              </h1>
-              <p className="mt-3 text-sm text-slate-300">
-                gitlore is cloning, parsing, and lighting up the structure
-                of your codebase. This usually takes a few moments for medium
-                projects.
-              </p>
-            </div>
+      {/* Atmospheric glow */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-1/2 top-1/3 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-tomato-jam/8 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-[300px] w-[300px] rounded-full bg-metallic-gold/5 blur-3xl" />
+      </div>
 
-            <ol className="space-y-3 text-sm text-slate-200">
-              {steps.map((step, index) => (
-                <li key={step.id} className="flex items-center gap-3">
-                  <motion.div
-                    className="relative h-9 w-9 rounded-full bg-slate-900/80"
-                    initial={{ scale: 0.9, opacity: 0.6 }}
-                    animate={{
-                      scale: [0.9, 1.05, 0.9],
-                      opacity: [0.6, 1, 0.6],
-                    }}
-                    transition={{
-                      duration: 2.4,
-                      repeat: Infinity,
-                      delay: index * 0.2,
-                    }}
-                  >
-                    <span className="absolute inset-[3px] rounded-full bg-slate-950" />
-                    <span className="absolute inset-[6px] rounded-full bg-gradient-to-tr from-cyan-400 to-fuchsia-500 blur-[1px]" />
-                  </motion.div>
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-                      {index + 1} · {step.id}
-                    </p>
-                    <p
-                      className={
-                        index === currentStepIndex
-                          ? "text-slate-50"
-                          : "text-slate-400"
-                      }
-                    >
-                      {step.label}
-                    </p>
+      <div className="relative z-10 flex w-full max-w-xl flex-col items-center">
+
+        {/* Eyebrow */}
+        <motion.p
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-5 text-xs font-semibold uppercase tracking-[0.22em] text-tomato-jam/70"
+        >
+          Neural Loading Bay
+        </motion.p>
+
+        {/* Headline */}
+        <motion.h1
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-2 text-center text-2xl font-semibold tracking-tight text-fg sm:text-3xl"
+        >
+          Mapping{" "}
+          <span className="text-tomato-jam">
+            {analysis?.name ?? "your repository"}
+          </span>
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="mb-12 text-center text-sm text-fg/40"
+        >
+          Cloning, parsing, and lighting up the structure of your codebase.
+        </motion.p>
+
+        {/* ── Orb ── */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.15, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="relative mb-12 flex h-48 w-48 items-center justify-center"
+        >
+          {/* Outermost breathing ring */}
+          <motion.div
+            className="absolute inset-0 rounded-full border border-tomato-jam/15"
+            animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+          />
+          {/* Rotating ring 1 */}
+          <motion.div
+            className="absolute inset-6 rounded-full border border-tomato-jam/25"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+          />
+          {/* Rotating ring 2 (counter) */}
+          <motion.div
+            className="absolute inset-12 rounded-full border border-metallic-gold/20"
+            animate={{ rotate: -360 }}
+            transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+          />
+          {/* Core glow */}
+          <div className="absolute h-20 w-20 rounded-full bg-gradient-to-br from-tomato-jam/40 via-metallic-gold/25 to-transparent blur-2xl" />
+          <div className="absolute h-10 w-10 rounded-full bg-gradient-to-br from-tomato-jam/70 to-metallic-gold/40 blur-lg" />
+          {/* Orbiting dot — outer */}
+          <motion.div
+            className="absolute inset-0"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 7, repeat: Infinity, ease: "linear" }}
+          >
+            <div className="absolute top-0 left-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1 rounded-full bg-tomato-jam shadow-[0_0_8px_rgba(192,57,43,0.9)]" />
+          </motion.div>
+          {/* Orbiting dot — inner */}
+          <motion.div
+            className="absolute inset-8"
+            animate={{ rotate: -360 }}
+            transition={{ duration: 13, repeat: Infinity, ease: "linear" }}
+          >
+            <div className="absolute bottom-0 right-0 h-1.5 w-1.5 rounded-full bg-metallic-gold/80 shadow-[0_0_6px_rgba(212,175,55,0.8)]" />
+          </motion.div>
+        </motion.div>
+
+        {/* ── Step progress ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mb-6 w-full"
+        >
+          <div className="mb-3 grid grid-cols-4 gap-1.5">
+            {steps.map((step, index) => {
+              const isDone    = index < currentStepIndex;
+              const isCurrent = index === currentStepIndex;
+              return (
+                <div key={step.id} className="flex flex-col items-center gap-1.5">
+                  <div className="relative h-0.5 w-full overflow-hidden rounded-full bg-fg/8">
+                    <motion.div
+                      className="absolute inset-y-0 left-0 rounded-full bg-tomato-jam"
+                      animate={{ width: isDone ? "100%" : isCurrent ? "55%" : "0%" }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                    />
                   </div>
-                </li>
-              ))}
-            </ol>
-          </section>
+                  <span
+                    className={cn(
+                      "text-[9px] font-semibold uppercase tracking-[0.12em] transition-colors duration-300",
+                      isCurrent ? "text-fg/70" : isDone ? "text-tomato-jam/55" : "text-fg/20",
+                    )}
+                  >
+                    {step.id}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
 
-          <section className="relative">
-            <div className="glass-panel h-full min-h-[260px] overflow-hidden border border-cyan-400/30 bg-slate-950/80">
-              <motion.div
-                className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/60 bg-slate-950/70"
-                initial={{ scale: 0.8, opacity: 0.7 }}
-                animate={{
-                  scale: [0.8, 1.05, 0.9],
-                  opacity: [0.7, 1, 0.8],
-                }}
-                transition={{ repeat: Infinity, duration: 3 }}
-              >
-                <motion.div
-                  className="absolute inset-6 rounded-full border border-fuchsia-400/60"
-                  animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 16, ease: "linear" }}
-                />
-                <motion.div
-                  className="absolute inset-3 rounded-full border border-sky-400/60"
-                  animate={{ rotate: -360 }}
-                  transition={{ repeat: Infinity, duration: 24, ease: "linear" }}
-                />
-                <div className="absolute inset-10 rounded-full bg-gradient-to-tr from-cyan-400/40 via-sky-500/50 to-fuchsia-500/40 blur-lg" />
-              </motion.div>
+          <p className="text-center text-sm text-fg/55">
+            {steps[currentStepIndex].label}
+          </p>
+        </motion.div>
 
-              <div className="absolute inset-x-0 bottom-0 space-y-2 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent px-4 pb-4 pt-10 text-[11px] text-slate-300">
-                <p className="font-medium text-slate-200">Streaming facts:</p>
-                <ul className="space-y-1 text-slate-400">
-                  {analysis?.owner && analysis?.name ? (
-                    <>
-                      <li>· GitHub repo: {analysis.owner}/{analysis.name}</li>
-                      <li>· Using Gemini model: gemini-2.5-flash</li>
-                      <li>
-                        · Hotspots identified: {analysis.hotspots.length || 3}{" "}
-                        candidate files
-                      </li>
-                    </>
-                  ) : (
-                    <>
-                      <li>· Resolving repository metadata</li>
-                      <li>· Preparing Gemini for architecture overview</li>
-                    </>
-                  )}
-                </ul>
-              </div>
-            </div>
-          </section>
-        </div>
+        {/* ── Live context facts ── */}
+        {analysis?.owner && analysis?.name && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="w-full rounded-2xl border border-fg/8 bg-fg/[0.03] px-5 py-4"
+          >
+            <p className="mb-2 text-[11px] font-semibold text-fg/45">Live context</p>
+            <ul className="space-y-1 text-[11px] text-fg/35">
+              <li>· Repo: {analysis.owner}/{analysis.name}</li>
+              <li>· Model: gemini-2.5-flash</li>
+              <li>· Hotspots: {analysis.hotspots.length || 3} candidate files</li>
+            </ul>
+          </motion.div>
+        )}
+
       </div>
     </main>
   );
 }
-
-
