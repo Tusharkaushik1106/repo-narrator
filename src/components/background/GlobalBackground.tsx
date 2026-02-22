@@ -26,9 +26,9 @@ export function GlobalBackground() {
       <MeshGradient
         className="w-full h-full"
         colors={["#101011", "#2a0d09", "#1a1204", "#040f0f"]}
-        speed={0.35}
-        distortion={0.25}
-        swirl={0.1}
+        speed={0.15}
+        distortion={0.18}
+        swirl={0.06}
       />
     </div>
   );

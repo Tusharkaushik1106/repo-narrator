@@ -95,7 +95,7 @@ export function ExtensionSpotlight() {
       }
       body="The gitlore VS Code extension brings repository intelligence directly into your editor. Get AI summaries, ask questions about the code you're reading, and review PRs with full architectural context."
       checkList={EXTENSION_FEATURES}
-      cta={{ label: "Install from VS Code Marketplace", href: "/#extension", external: true }}
+      cta={{ label: "Install from VS Code Marketplace", href: "https://marketplace.visualstudio.com/items?itemName=TusharKaushik.gitlore-hologram", external: true }}
       rightPanel={<EditorMockup />}
     />
   );

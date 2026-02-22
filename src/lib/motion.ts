@@ -3,11 +3,6 @@
  *
  * All animation values live here. Import constants into motion
  * components and hooks — never hardcode durations or easings inline.
- *
- * Design principles:
- *   • Subtle: transforms are small (y ≤ 16px, scale ≥ 0.96)
- *   • Slow:   entry durations 0.65 – 0.9 s
- *   • Purposeful: every animation has a named intent (reveal, stagger, section)
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -16,13 +11,13 @@
 
 export const DURATION = {
   /** UI micro-interactions: button hover, icon spin */
-  fast:    0.2,
+  fast:    0.15,
   /** Component-level transitions: tabs, dropdowns */
-  base:    0.4,
+  base:    0.25,
   /** Element-level scroll reveals */
-  reveal:  0.65,
+  reveal:  0.4,
   /** Section-level viewport entrance */
-  section: 0.85,
+  section: 0.5,
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,37 +39,38 @@ export const EASE = {
 
 export const STAGGER = {
   /** Dense grids: icon rows, tag clouds */
-  xs: 0.04,
+  xs: 0.03,
   /** Standard grids: feature cards, steps */
-  sm: 0.08,
+  sm: 0.05,
   /** Spaced grids: testimonials, large cards */
-  md: 0.12,
+  md: 0.08,
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Viewport thresholds (fraction of element visible before trigger)
+// Higher threshold = fires later = less jank during fast scrolls
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const THRESHOLD = {
-  /** Section-level — fires as soon as a sliver enters viewport */
-  section: 0.04,
-  /** Element-level reveals — fire when ~12% is visible */
-  reveal:  0.12,
-  /** Stagger containers — fire when ~8% is visible */
-  stagger: 0.08,
+  /** Section-level — fires when ~10% enters viewport */
+  section: 0.1,
+  /** Element-level reveals — fire when ~15% is visible */
+  reveal:  0.15,
+  /** Stagger containers — fire when ~12% is visible */
+  stagger: 0.12,
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Named animation variants (framer-motion hidden / visible states)
 //
-// All transforms are intentionally small — the motion should feel like
-// "content settling in", not a dramatic entrance.
+// Transforms are kept small — motion should feel like content settling in,
+// not a dramatic entrance.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const variants = {
   /** Default: fade + gentle upward slide */
   fadeUp: {
-    hidden:  { opacity: 0, y: 16 },
+    hidden:  { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0  },
   },
   /** Opacity only — for content where positional shift would feel wrong */
@@ -84,27 +80,25 @@ export const variants = {
   },
   /** Fade + very subtle scale — for cards and modals */
   fadeScale: {
-    hidden:  { opacity: 0, scale: 0.97 },
+    hidden:  { opacity: 0, scale: 0.98 },
     visible: { opacity: 1, scale: 1    },
   },
   /** Slide from left — for left-column content in splits */
   slideLeft: {
-    hidden:  { opacity: 0, x: -20 },
+    hidden:  { opacity: 0, x: -14 },
     visible: { opacity: 1, x: 0   },
   },
   /** Slide from right — for right-column content in splits */
   slideRight: {
-    hidden:  { opacity: 0, x: 20 },
+    hidden:  { opacity: 0, x: 14 },
     visible: { opacity: 1, x: 0  },
   },
   /**
    * Section-level entrance — barely-there translate + fade.
-   * More subtle than element-level reveals so the two layers
-   * don't compete visually.
    */
   sectionEnter: {
-    hidden:  { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0  },
+    hidden:  { opacity: 0, y: 6 },
+    visible: { opacity: 1, y: 0 },
   },
 } as const;
 

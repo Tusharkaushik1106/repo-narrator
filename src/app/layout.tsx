@@ -85,15 +85,15 @@ export default function RootLayout({
                   {/* z-[2] — Colour atmosphere: warm top-left blob */}
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none fixed inset-0 z-[2] bg-gradient-to-br from-tomato-jam/20 via-metallic-gold/10 to-transparent blur-3xl"
-                    style={{ opacity: "var(--blob-opacity-1, 0.2)" }}
+                    className="pointer-events-none fixed inset-0 z-[2] bg-gradient-to-br from-tomato-jam/14 via-metallic-gold/7 to-transparent"
+                    style={{ opacity: "var(--blob-opacity-1, 0.2)", transform: "translateZ(0)" }}
                   />
 
                   {/* z-[2] — Colour atmosphere: cool bottom-right counter-blob */}
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none fixed inset-0 z-[2] bg-gradient-to-tl from-transparent via-fg/5 to-tomato-jam/15 blur-3xl"
-                    style={{ opacity: "var(--blob-opacity-2, 0.1)" }}
+                    className="pointer-events-none fixed inset-0 z-[2] bg-gradient-to-tl from-transparent via-fg/4 to-tomato-jam/10"
+                    style={{ opacity: "var(--blob-opacity-2, 0.1)", transform: "translateZ(0)" }}
                   />
 
                   {/* z-[3] — Vignette: edge-darkening radial overlay */}

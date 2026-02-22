@@ -80,19 +80,21 @@ export function DarkSection({
           {/* Top-right — tomato-jam warm */}
           <div
             aria-hidden
-            className="pointer-events-none absolute -top-32 -right-32 h-[28rem] w-[28rem] rounded-full blur-3xl"
+            className="pointer-events-none absolute -top-32 -right-32 h-[28rem] w-[28rem] rounded-full"
             style={{
-              background: "radial-gradient(circle, rgba(192,57,43,0.22), transparent 70%)",
+              background: "radial-gradient(circle, rgba(192,57,43,0.18) 0%, transparent 70%)",
               opacity: "var(--blob-opacity-1)",
+              transform: "translateZ(0)",
             }}
           />
           {/* Bottom-left — metallic-gold counter */}
           <div
             aria-hidden
-            className="pointer-events-none absolute -bottom-32 -left-32 h-[24rem] w-[24rem] rounded-full blur-3xl"
+            className="pointer-events-none absolute -bottom-32 -left-32 h-[24rem] w-[24rem] rounded-full"
             style={{
-              background: "radial-gradient(circle, rgba(212,175,55,0.18), transparent 70%)",
+              background: "radial-gradient(circle, rgba(212,175,55,0.14) 0%, transparent 70%)",
               opacity: "var(--blob-opacity-2)",
+              transform: "translateZ(0)",
             }}
           />
         </>

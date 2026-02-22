@@ -73,19 +73,21 @@ export function LightSection({
           {/* Top-left — very faint tomato warmth */}
           <div
             aria-hidden
-            className="pointer-events-none absolute -top-24 -left-24 h-[20rem] w-[20rem] rounded-full blur-3xl"
+            className="pointer-events-none absolute -top-24 -left-24 h-[20rem] w-[20rem] rounded-full"
             style={{
-              background: "radial-gradient(circle, rgba(192,57,43,0.12), transparent 70%)",
+              background: "radial-gradient(circle, rgba(192,57,43,0.10) 0%, transparent 70%)",
               opacity: "var(--blob-opacity-1)",
+              transform: "translateZ(0)",
             }}
           />
           {/* Bottom-right — faint gold warmth */}
           <div
             aria-hidden
-            className="pointer-events-none absolute -bottom-24 -right-24 h-[18rem] w-[18rem] rounded-full blur-3xl"
+            className="pointer-events-none absolute -bottom-24 -right-24 h-[18rem] w-[18rem] rounded-full"
             style={{
-              background: "radial-gradient(circle, rgba(212,175,55,0.10), transparent 70%)",
+              background: "radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%)",
               opacity: "var(--blob-opacity-2)",
+              transform: "translateZ(0)",
             }}
           />
         </>

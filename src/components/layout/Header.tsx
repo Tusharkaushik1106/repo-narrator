@@ -43,7 +43,15 @@ function MarketingNav() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   React.useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 40);
+    let rafPending = false;
+    const handler = () => {
+      if (rafPending) return;
+      rafPending = true;
+      requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 40);
+        rafPending = false;
+      });
+    };
     handler();
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
@@ -64,7 +72,7 @@ function MarketingNav() {
           aria-label="Main navigation"
           className={cn(
             "pointer-events-auto relative flex items-center gap-1 rounded-2xl px-3 py-2",
-            "border backdrop-blur-xl transition-all duration-300 ease-in-out",
+            "border backdrop-blur-xl transition-[background-color,border-color,box-shadow] duration-300 ease-in-out",
             scrolled
               ? "bg-canvas/88 border-fg/12 shadow-[0_8px_40px_rgba(0,0,0,0.55)]"
               : "bg-canvas/45 border-fg/8  shadow-[0_4px_20px_rgba(0,0,0,0.25)]",
