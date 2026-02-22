@@ -1,33 +1,20 @@
 "use client";
 
 import * as React from "react";
-import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
-import { useMotionPreference } from "@/hooks/useMotionPreference";
-import { DURATION, EASE, THRESHOLD, variants } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 import type { MotionVariant } from "@/lib/motion";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reveal — scroll-triggered entrance for a single element
 //
-// Wraps children in a motion.div that animates when the element enters
-// the viewport. Respects prefers-reduced-motion.
-//
-// @example
-//   <Reveal>
-//     <h2>Section headline</h2>
-//   </Reveal>
-//
-//   <Reveal variant="slideLeft" delay={0.1}>
-//     <p>Left column copy</p>
-//   </Reveal>
+// Replaced framer-motion with pure CSS @keyframes + IntersectionObserver.
+// CSS animations run on the GPU compositor thread — zero JS on the main
+// thread during scroll, eliminating the biggest source of long tasks.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface RevealProps {
   children:   React.ReactNode;
-  /** Animation variant — defaults to "fadeUp" */
   variant?:   MotionVariant;
-  /** Extra delay in seconds before the animation starts */
   delay?:     number;
   className?: string;
 }
@@ -38,24 +25,38 @@ export function Reveal({
   delay     = 0,
   className,
 }: RevealProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const { isReduced } = useMotionPreference();
-  const inView = useInView(ref, { once: true, amount: THRESHOLD.reveal });
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    // "reveal-ready" triggers the CSS hidden state (avoids SSR flash)
+    el.classList.add("reveal-ready");
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        el.setAttribute("data-visible", "1");
+        observer.disconnect();
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <motion.div
+    <div
       ref={ref}
-      initial="hidden"
-      animate={isReduced ? "visible" : (inView ? "visible" : "hidden")}
-      variants={variants[variant]}
-      transition={
-        isReduced
-          ? { duration: 0 }
-          : { duration: DURATION.reveal, ease: EASE.enter, delay }
-      }
-      className={className}
+      data-reveal={variant}
+      className={cn(className)}
+      style={delay > 0 ? ({ "--reveal-delay": `${delay}s` } as React.CSSProperties) : undefined}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }

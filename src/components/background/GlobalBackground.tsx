@@ -1,34 +1,40 @@
 "use client";
 
-import { MeshGradient } from "@paper-design/shaders-react";
-
 // ─────────────────────────────────────────────────────────────────────────────
-// GlobalBackground
+// GlobalBackground — cinematic base layer (z-[1])
 //
-// Full-page WebGL mesh-gradient at z-[1] (the base cinematic layer).
-// Fixed-positioned — scrolls with the page structure, visible through all
-// dark sections whose --bg-radial is set to transparent.
-//
-// Colors match the gitlore dark cinematic palette:
-//   ink-black (#101011) → warm-dark-red (#2a0d09) → dark-gold (#1a1204)
-//   → seppia-black (#040f0f)
-//
-// Loaded client-only (ssr: false in layout.tsx) — WebGL unavailable on server.
-// The outer div's bg-[#101011] acts as SSR fallback until the canvas hydrates.
+// Replaced WebGL MeshGradient shader with pure CSS radial-gradient + transform
+// animation. CSS transform runs on the GPU compositor thread — zero JS main
+// thread involvement, eliminating the 3000+ ms TBT contribution of the shader.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function GlobalBackground() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 z-[1] bg-[#101011]"
+      className="pointer-events-none fixed inset-0 z-[1] overflow-hidden bg-[#101011]"
     >
-      <MeshGradient
-        className="w-full h-full"
-        colors={["#101011", "#2a0d09", "#1a1204", "#040f0f"]}
-        speed={0.15}
-        distortion={0.18}
-        swirl={0.06}
+      {/* Warm focal blob — slow drift via CSS transform (compositor thread only) */}
+      <div
+        style={{
+          position: "absolute",
+          inset: "-25%",
+          background:
+            "radial-gradient(ellipse 65% 55% at 28% 28%, #2a0d09 0%, transparent 65%)",
+          animation: "gfBgWarm 28s ease-in-out infinite alternate",
+          willChange: "transform",
+        }}
+      />
+      {/* Cool deep accent — counter-drift */}
+      <div
+        style={{
+          position: "absolute",
+          inset: "-25%",
+          background:
+            "radial-gradient(ellipse 55% 65% at 78% 75%, #1a1204 0%, #040f0f 35%, transparent 65%)",
+          animation: "gfBgCool 35s ease-in-out infinite alternate-reverse",
+          willChange: "transform",
+        }}
       />
     </div>
   );

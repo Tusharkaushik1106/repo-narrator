@@ -305,6 +305,67 @@ body {
 .font-fraktion  { font-family: var(--font-fraktion, 'JetBrains Mono', monospace); }
 .font-editorial { font-family: var(--font-editorial, Georgia, serif); }
 
+/* ── Global background CSS animation keyframes (replaces WebGL shader) ── */
+@keyframes gfBgWarm {
+  from { transform: scale(1)    translate(0,   0); }
+  to   { transform: scale(1.18) translate(6%,  10%); }
+}
+@keyframes gfBgCool {
+  from { transform: scale(1)    translate(0,   0); }
+  to   { transform: scale(1.12) translate(-9%, -6%); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * CSS Scroll Reveal System
+ *
+ * Replaces framer-motion Reveal / Stagger / SectionTransition with pure CSS.
+ * Animations run on the GPU compositor thread → zero main-thread JS during scroll.
+ *
+ * Flow:
+ *   1. Component mounts → JS adds class "reveal-ready" → opacity: 0 activates
+ *   2. IntersectionObserver fires → JS sets data-visible="1"
+ *   3. CSS @keyframe plays (compositor thread only)
+ *
+ * "--reveal-delay" CSS custom property is set inline for staggered items.
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+/* Hidden state — only when reveal-ready is present (avoids SSR flash) */
+.reveal-ready[data-reveal]:not([data-visible]) {
+  opacity: 0;
+}
+
+/* Shared animation settings when visible */
+.reveal-ready[data-reveal][data-visible] {
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-duration: 0.4s;
+  animation-delay: var(--reveal-delay, 0s);
+}
+
+/* Per-variant animation names */
+.reveal-ready[data-reveal="fadeUp"][data-visible]      { animation-name: gfFadeUp; }
+.reveal-ready[data-reveal="fade"][data-visible]        { animation-name: gfFade; }
+.reveal-ready[data-reveal="fadeScale"][data-visible]   { animation-name: gfFadeScale; }
+.reveal-ready[data-reveal="slideLeft"][data-visible]   { animation-name: gfSlideLeft; }
+.reveal-ready[data-reveal="slideRight"][data-visible]  { animation-name: gfSlideRight; }
+.reveal-ready[data-reveal="sectionEnter"][data-visible] {
+  animation-name: gfSectionEnter;
+  animation-duration: 0.5s;
+}
+
+@keyframes gfFadeUp     { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes gfFade       { from { opacity: 0; }                              to { opacity: 1; } }
+@keyframes gfFadeScale  { from { opacity: 0; transform: scale(0.98); }     to { opacity: 1; transform: none; } }
+@keyframes gfSlideLeft  { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+@keyframes gfSlideRight { from { opacity: 0; transform: translateX(14px); }  to { opacity: 1; transform: none; } }
+@keyframes gfSectionEnter { from { opacity: 0; transform: translateY(6px); }  to { opacity: 1; transform: none; } }
+
+/* Respect prefers-reduced-motion — show immediately, no animation */
+@media (prefers-reduced-motion: reduce) {
+  .reveal-ready[data-reveal]:not([data-visible]) { opacity: 1 !important; }
+  .reveal-ready[data-reveal][data-visible]        { animation: none !important; }
+}
+
 /* ── Keyframe animations ── */
 @keyframes rotate-gradient {
   from { transform: rotate(0deg) translateZ(0); }

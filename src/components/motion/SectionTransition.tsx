@@ -1,22 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
-import { useMotionPreference } from "@/hooks/useMotionPreference";
-import { DURATION, EASE, THRESHOLD, variants } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SectionTransition — barely-perceptible section-level entrance
 //
-// Applied automatically by _SectionEnv so every block gets a consistent
-// section-level entrance without per-block changes.
-//
-// Uses the "sectionEnter" variant (y: 10, opacity: 0 → 1) — more conservative
-// than element-level Reveal (y: 16) so the two animation layers don't compete.
-//
-// Fires at THRESHOLD.section (4%) so it triggers as soon as a sliver of
-// the section enters the viewport.
+// Replaced framer-motion with pure CSS @keyframes + IntersectionObserver.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface SectionTransitionProps {
@@ -25,24 +15,32 @@ export interface SectionTransitionProps {
 }
 
 export function SectionTransition({ children, className }: SectionTransitionProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const { isReduced } = useMotionPreference();
-  const inView = useInView(ref, { once: true, amount: THRESHOLD.section });
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    el.classList.add("reveal-ready");
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        el.setAttribute("data-visible", "1");
+        observer.disconnect();
+      },
+      { threshold: 0.08 },
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <motion.div
-      ref={ref}
-      initial="hidden"
-      animate={isReduced ? "visible" : (inView ? "visible" : "hidden")}
-      variants={variants.sectionEnter}
-      transition={
-        isReduced
-          ? { duration: 0 }
-          : { duration: DURATION.section, ease: EASE.enter }
-      }
-      className={className}
-    >
+    <div ref={ref} data-reveal="sectionEnter" className={cn(className)}>
       {children}
-    </motion.div>
+    </div>
   );
 }

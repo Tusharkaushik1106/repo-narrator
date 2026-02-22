@@ -6,19 +6,19 @@ interface Particle {
   x: number;
   y: number;
   size: number;
-  color: string;        // "R, G, B"
+  color: string;
   opacity: number;
-  speed: number;        // px/frame upward
+  speed: number;
   swaySpeed: number;
   swayOffset: number;
-  depth: number;        // 0 = farthest, 1 = nearest
+  depth: number;
   parallaxFactor: number;
 }
 
 const BRAND_COLORS = [
-  "192, 57, 43",   // tomato-jam
-  "212, 175, 55",  // metallic-gold
-  "231, 215, 193", // almond-cream
+  "192, 57, 43",
+  "212, 175, 55",
+  "231, 215, 193",
 ];
 
 function createParticle(width: number, height: number, randomY = true): Particle {
@@ -52,14 +52,13 @@ export function ParticleCanvas() {
 
     const COUNT = 18;
     let particles: Particle[] = [];
-    let rafId: number;
+    let rafId = 0;
     let tick = 0;
 
     const mouse = { tx: 0, ty: 0, cx: 0, cy: 0 };
     const PARALLAX_MAX = 14;
     const MOUSE_LERP   = 0.035;
 
-    // Throttle mouse events — only update target on the next RAF
     let mousePending = false;
     let mouseRawX = 0;
     let mouseRawY = 0;
@@ -80,14 +79,12 @@ export function ParticleCanvas() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       tick++;
 
-      // Apply pending mouse position
       if (mousePending) {
         mouse.tx = mouseRawX / window.innerWidth  - 0.5;
         mouse.ty = mouseRawY / window.innerHeight - 0.5;
         mousePending = false;
       }
 
-      // Exponential ease toward mouse target
       mouse.cx += (mouse.tx - mouse.cx) * MOUSE_LERP;
       mouse.cy += (mouse.ty - mouse.cy) * MOUSE_LERP;
 
@@ -114,6 +111,20 @@ export function ParticleCanvas() {
       rafId = requestAnimationFrame(frame);
     }
 
+    function startLoop() {
+      if (rafId) return;
+      rafId = requestAnimationFrame(frame);
+    }
+
+    function stopLoop() {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+
+    function onVisibilityChange() {
+      document.hidden ? stopLoop() : startLoop();
+    }
+
     function onMouseMove(e: MouseEvent) {
       mouseRawX = e.clientX;
       mouseRawY = e.clientY;
@@ -129,12 +140,15 @@ export function ParticleCanvas() {
     }
 
     init();
-    frame();
+    startLoop();
 
+    document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("mousemove", onMouseMove, { passive: true });
     window.addEventListener("resize",    onResize,    { passive: true });
+
     return () => {
-      cancelAnimationFrame(rafId);
+      stopLoop();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("resize",    onResize);
     };

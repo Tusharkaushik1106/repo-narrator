@@ -24,7 +24,10 @@
       "Bash(npx tsc:*)",
       "Bash(npm install:*)",
       "Bash(node -e:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx playwright:*)",
+      "Bash(netstat:*)",
+      "Bash(node:*)"
     ]
   }
 }

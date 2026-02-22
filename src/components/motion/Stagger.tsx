@@ -1,90 +1,86 @@
 "use client";
 
 import * as React from "react";
-import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
-import { useMotionPreference } from "@/hooks/useMotionPreference";
-import { DURATION, EASE, STAGGER, THRESHOLD, variants } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 import type { MotionVariant } from "@/lib/motion";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Stagger + StaggerItem — viewport-triggered staggered entrance
 //
-// Stagger is the container: it owns the viewport trigger and stagger timing.
-// StaggerItem wraps each animated child individually.
+// Replaced framer-motion with pure CSS @keyframes + IntersectionObserver +
+// direct DOM manipulation (no React state updates during scroll).
 //
-// Separate parent/child components allow non-animated siblings (e.g. the
-// connecting gradient line in FeatureGrid) to live in the same container
-// without being pulled into the stagger sequence.
-//
-// @example
-//   <Stagger className="grid grid-cols-3 gap-5" stagger="sm">
-//     {/* non-animated sibling — not a StaggerItem */}
-//     <div aria-hidden className="absolute ..." />
-//
-//     {items.map(item => (
-//       <StaggerItem key={item.title}>
-//         <Card item={item} />
-//       </StaggerItem>
-//     ))}
-//   </Stagger>
+// When Stagger enters the viewport:
+//   1. IntersectionObserver fires once
+//   2. Directly iterates [data-stagger-item] children via querySelectorAll
+//   3. Sets CSS custom property --reveal-delay on each item (i * interval ms)
+//   4. Adds data-visible attribute — CSS keyframe picks it up on compositor
 // ─────────────────────────────────────────────────────────────────────────────
+
+const STAGGER_MS = { xs: 30, sm: 50, md: 80 } as const;
 
 export interface StaggerProps {
   children:   React.ReactNode;
-  /** Interval between each child entrance — "xs" | "sm" | "md" */
-  stagger?:   keyof typeof STAGGER;
+  stagger?:   keyof typeof STAGGER_MS;
   className?: string;
 }
 
 export interface StaggerItemProps {
   children:   React.ReactNode;
-  /** Animation variant — defaults to "fadeUp" */
   variant?:   MotionVariant;
   className?: string;
 }
 
-const containerVariants = (interval: number) => ({
-  hidden:  {},
-  visible: {
-    transition: { staggerChildren: interval },
-  },
-} as const);
-
-/** Container — owns viewport detection and provides stagger timing. */
+/** Container — owns viewport detection and stagger timing. */
 export function Stagger({ children, stagger = "sm", className }: StaggerProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const { isReduced } = useMotionPreference();
-  const inView = useInView(ref, { once: true, amount: THRESHOLD.stagger });
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const intervalMs = STAGGER_MS[stagger];
+
+    // Mark all items as ready for CSS reveal (hidden state)
+    const items = el.querySelectorAll("[data-stagger-item]");
+    if (!reduced) {
+      items.forEach((item) => item.classList.add("reveal-ready"));
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        observer.disconnect();
+
+        if (reduced) return;
+
+        // Direct DOM mutation — no React re-render, no framer-motion, no JS animation loop
+        items.forEach((item, i) => {
+          const el = item as HTMLElement;
+          el.style.setProperty("--reveal-delay", `${i * intervalMs}ms`);
+          el.setAttribute("data-visible", "1");
+        });
+      },
+      { threshold: 0.08 },
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [stagger]);
 
   return (
-    <motion.div
-      ref={ref}
-      variants={containerVariants(isReduced ? 0 : STAGGER[stagger])}
-      initial="hidden"
-      animate={isReduced ? "visible" : (inView ? "visible" : "hidden")}
-      className={className}
-    >
+    <div ref={ref} className={className}>
       {children}
-    </motion.div>
+    </div>
   );
 }
 
 /** Animated child inside a Stagger container. */
 export function StaggerItem({ children, variant = "fadeUp", className }: StaggerItemProps) {
-  const { isReduced } = useMotionPreference();
-
   return (
-    <motion.div
-      variants={variants[variant]}
-      transition={
-        isReduced
-          ? { duration: 0 }
-          : { duration: DURATION.reveal, ease: EASE.enter }
-      }
-      className={className}
-    >
+    <div data-stagger-item data-reveal={variant} className={cn(className)}>
       {children}
-    </motion.div>
+    </div>
   );
 }
