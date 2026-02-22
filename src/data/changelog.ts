@@ -9,6 +9,7 @@ import {
   Bug,
   Wrench,
   Rocket,
+  Gauge,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -39,6 +40,27 @@ export interface Release {
 }
 
 export const RELEASES: Release[] = [
+  {
+    version:   "0.7.0",
+    date:      "2026-02-23",
+    tag:       "Minor",
+    title:     "Performance & UI Overhaul",
+    summary:   "Scroll FPS and TBT slashed by replacing WebGL and framer-motion with compositor-thread CSS animations. Full UI refresh across navbar, sign-in, and loading screens.",
+    icon:      Gauge,
+    iconColor: "text-metallic-gold",
+    changes: [
+      { type: "improvement", description: "Replaced WebGL MeshGradient shader with CSS radial-gradient animations — eliminates GPU stall on every frame" },
+      { type: "improvement", description: "Replaced framer-motion Reveal, Stagger, and SectionTransition with IntersectionObserver + CSS keyframes — zero JS on scroll" },
+      { type: "improvement", description: "ParticleCanvas now pauses RAF loop when tab is hidden via visibilitychange API" },
+      { type: "improvement", description: "Removed blur-3xl filters from atmosphere blobs; added translateZ(0) for GPU layer promotion" },
+      { type: "improvement", description: "Header scroll listener throttled with requestAnimationFrame; replaced transition-all with targeted property transitions" },
+      { type: "improvement", description: "NeuralBackground SVG paths reduced 21→6; removed feGaussianBlur glow filter; resize handler debounced" },
+      { type: "improvement", description: "ParticleCanvas count reduced 40→18; removed ctx.filter blur; mouse events RAF-gated" },
+      { type: "feature",     description: "Logo added to navbar and set as browser favicon across all pages" },
+      { type: "fix",         description: "Fixed VS Code Extension CTA pointing to wrong URL — now links to correct Marketplace listing" },
+      { type: "fix",         description: "Fixed TypeScript build errors in card, container, theme-toggle, and typography components" },
+    ],
+  },
   {
     version:   "0.6.0",
     date:      "2026-02-18",

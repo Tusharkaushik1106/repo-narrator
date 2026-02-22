@@ -5,9 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { AuthButton } from "@/components/auth/AuthButton";
-import { NavBrand } from "@/components/ui";
-import { LogoMark } from "@/components/ui/LogoMark";
 import { LayoutDashboard, Code2, GitFork, ArrowRight, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,12 +16,24 @@ import { cn } from "@/lib/utils";
 
 function Brand() {
   return (
-    <NavBrand
-      href="/"
-      logo={<LogoMark className="h-full w-full" />}
-      name="gitlore"
-      tagline="speak fluent repository"
-    />
+    <Link href="/" className="group inline-flex items-center gap-2.5 transition-opacity duration-150 hover:opacity-85">
+      <Image
+        src="/logo.png"
+        alt="gitlore"
+        width={36}
+        height={36}
+        className="shrink-0 rounded-xl"
+        priority
+      />
+      <div className="flex flex-col leading-none gap-[3px]">
+        <span className="text-[15px] font-semibold tracking-tight text-fg/90 group-hover:text-fg transition-colors duration-150">
+          gitlore
+        </span>
+        <span className="text-[8px] font-medium tracking-[0.16em] uppercase text-fg/50 group-hover:text-fg/70 transition-colors duration-150">
+          speak fluent repository
+        </span>
+      </div>
+    </Link>
   );
 }
 

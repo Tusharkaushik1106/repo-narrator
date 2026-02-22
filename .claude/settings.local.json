@@ -27,7 +27,8 @@
       "Bash(npm run build:*)",
       "Bash(npx playwright:*)",
       "Bash(netstat:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(git -C /c/Users/anura/OneDrive/Desktop/gitnarrator/repo-narrator log --oneline -30)"
     ]
   }
 }

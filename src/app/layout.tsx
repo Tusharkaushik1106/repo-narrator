@@ -33,6 +33,11 @@ const displayFont = Shrikhand({
 export const metadata: Metadata = {
   title: "gitlore",
   description: "Speak fluent repository. Gemini-powered deep repo explorer.",
+  icons: {
+    icon:       [{ url: "/icon.png", type: "image/png" }],
+    apple:      [{ url: "/icon.png", type: "image/png" }],
+    shortcut:   [{ url: "/icon.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({
