@@ -8,7 +8,7 @@ import type {
 } from "./types";
 import type { LLMAdapter } from "./llm_adapter";
 
-const DEFAULT_MODEL = "models/gemini-2.5-flash";
+const DEFAULT_MODEL = "models/gemini-3.6-flash";
 
 function normalizeModelName(name: string): string {
   return name.startsWith("models/") ? name : `models/${name}`;
@@ -131,7 +131,7 @@ export const geminiAdapter: LLMAdapter = {
       const errorMessage = error instanceof Error ? error.message : String(error);
       
       if (errorMessage.includes("404")) {
-         throw new Error("Model not found. Please check GEMINI_MODEL in .env is set to 'gemini-2.5-flash'.");
+         throw new Error("Model not found. Please check GEMINI_MODEL in .env is set to 'gemini-3.6-flash'.");
       }
       if (errorMessage.includes("503")) {
         throw new Error("Gemini is currently overloaded. Please try again in a moment.");

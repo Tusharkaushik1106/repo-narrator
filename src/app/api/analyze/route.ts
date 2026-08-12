@@ -128,7 +128,7 @@ async function buildElevatorPitch(
   try {
     const client = new GoogleGenerativeAI(apiKey);
     const model = client.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || "models/gemini-2.5-flash",
+      model: process.env.GEMINI_MODEL || "models/gemini-3.6-flash",
       generationConfig: {
         maxOutputTokens: 800,
         temperature: 0.7,
