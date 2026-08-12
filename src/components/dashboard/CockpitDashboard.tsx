@@ -140,7 +140,7 @@ export function CockpitDashboard() {
                     </div>
                     <div className="flex items-center gap-1.5 rounded-full bg-fg/5 px-2.5 py-1 text-[10px] text-fg/50 ring-1 ring-fg/10">
                       <Sparkles className="h-2.5 w-2.5 text-tomato-jam" />
-                      <span>Gemini · <span className="text-tomato-jam/80 font-medium">gemini-2.5-flash</span></span>
+                      <span>Gemini · <span className="text-tomato-jam/80 font-medium">gemini-3.6-flash</span></span>
                     </div>
                   </header>
 

@@ -56,7 +56,7 @@ flowchart TD
 ## Environment & config
 Required for core features:
 - `GEMINI_API_KEY` — Gemini API key.
-- `GEMINI_MODEL` — Optional; defaults to `gemini-2.5-flash`.
+- `GEMINI_MODEL` — Optional; defaults to `gemini-3.6-flash`.
 - `GITHUB_PAT` — Optional; raises GitHub rate limits.
 - `DATABASE_URL` — Optional; enables Postgres persistence for diagrams/usage.
 - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`

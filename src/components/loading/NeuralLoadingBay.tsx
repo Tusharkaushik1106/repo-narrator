@@ -292,7 +292,7 @@ export function NeuralLoadingBay() {
             <p className="mb-2 text-[11px] font-semibold text-fg/45">Live context</p>
             <ul className="space-y-1 text-[11px] text-fg/35">
               <li>· Repo: {analysis.owner}/{analysis.name}</li>
-              <li>· Model: gemini-2.5-flash</li>
+              <li>· Model: gemini-3.6-flash</li>
               <li>· Hotspots: {analysis.hotspots.length || 3} candidate files</li>
             </ul>
           </motion.div>

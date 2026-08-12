@@ -336,7 +336,7 @@ OPTIONS preflight returns 200 with CORS headers.
 - Response is plain text — Gemini is explicitly instructed to NOT use Markdown.
 - Returns `{ answer: "Auth Failed" }` with status 401 on bad key.
 - Returns `{ answer: "System Overload. Try again." }` with status 500 on errors.
-- Uses `gemini-2.5-flash` model with `maxTokens: 200`.
+- Uses `gemini-3.6-flash` model with `maxTokens: 200`.
 
 ---
 
@@ -540,7 +540,7 @@ Returns zeroed object on DB failure.
 
 ### 7.1 Google Gemini API (`src/lib/gemini_adapter.ts`)
 
-**Default model:** `models/gemini-2.5-flash`
+**Default model:** `models/gemini-3.6-flash`
 **Embedding model:** `gemini-embedding-001` (hardcoded in `src/lib/embeddings.ts`)
 
 **Retry policy:**

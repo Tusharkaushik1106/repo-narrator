@@ -66,7 +66,7 @@ ${functionCode}
       const completion = await geminiAdapter.chat({
         messages,
         config: {
-          model: "gemini-2.5-flash",
+          model: "gemini-3.6-flash",
           maxTokens: 1000,
           streaming: false,
         },
